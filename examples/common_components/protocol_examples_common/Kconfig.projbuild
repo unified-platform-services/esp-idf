@@ -10,6 +10,66 @@ menu "Example Connection Configuration"
             Choose this option to connect with WiFi
 
     if EXAMPLE_CONNECT_WIFI
+        config EXAMPLE_SET_STATIC_IP
+            bool "Set static IP upon network is connected"
+            default n
+            help
+                Set static IP instead of DHCP assigned IP.
+
+        config EXAMPLE_STATIC_IP_ADDR
+            depends on EXAMPLE_SET_STATIC_IP
+            string "Static IP address"
+            default "192.168.4.2"
+            help
+                Set static IP address.
+    
+        config EXAMPLE_STATIC_NETMASK_ADDR
+            depends on EXAMPLE_SET_STATIC_IP
+            string "Static netmask address"
+            default "255.255.255.0"
+            help
+                Set static netmask address.
+    
+        config EXAMPLE_STATIC_GW_ADDR
+            depends on EXAMPLE_SET_STATIC_IP
+            string "Static gateway address"
+            default "192.168.4.1"
+            help
+                Set static gateway address.
+    
+        choice EXAMPLE_STATIC_DNS_SERVER
+            depends on EXAMPLE_SET_STATIC_IP
+            prompt "Choose DNS server"
+            default EXAMPLE_STATIC_DNS_AUTO
+            help
+                Select auto to make gateway address as DNS server or manual to input your DNS server
+            config EXAMPLE_STATIC_DNS_AUTO
+                bool "Use gateway address as DNS server"
+                help
+                    Set DNS server the same as gateway address
+    
+            config EXAMPLE_STATIC_DNS_MANUAL
+                bool "Set manual value as DNS server"
+                help
+                    Set DNS server with you want
+        endchoice
+    
+        config EXAMPLE_STATIC_DNS_SERVER_MAIN
+            depends on EXAMPLE_SET_STATIC_IP
+            string "Main DNS server address"
+            default "192.168.4.1"
+            depends on EXAMPLE_STATIC_DNS_MANUAL
+            help
+                Set main DNS server address.
+    
+        config EXAMPLE_STATIC_DNS_SERVER_BACKUP
+            depends on EXAMPLE_SET_STATIC_IP
+            string "Backup DNS server address"
+            default "192.168.4.1"
+            depends on EXAMPLE_STATIC_DNS_MANUAL
+            help
+                Set backup DNS server address. It can be same with the main DNS server address or leave empty.            
+
         config EXAMPLE_WIFI_SSID_PWD_FROM_STDIN
             bool "Get ssid and password from stdin"
             default n
@@ -346,6 +406,5 @@ menu "Example Connection Configuration"
         endchoice
 
     endif
-
 
 endmenu

@@ -88,6 +88,11 @@ cd path_to_this_example/front/web-demo
 npm install
 npm run build
 ```
+For Windows,
+
+```bash
+set NODE_OPTIONS=--openssl-legacy-provider && npm run build
+```
 
 After a while, you will see a `dist` directory which contains all the website files (e.g. html, js, css, images).
 
