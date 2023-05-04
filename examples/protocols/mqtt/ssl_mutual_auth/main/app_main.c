@@ -112,13 +112,16 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base, int32_
 static void mqtt_app_start(void)
 {
   const esp_mqtt_client_config_t mqtt_cfg = {
-    .broker.address.uri = "mqtts://test.mosquitto.org:8884",
+    // .broker.address.uri = "mqtts://test.mosquitto.org:8884",
+    .broker.address.uri = "mqtts://ephcb2lite.local",    
     .broker.verification.certificate = (const char *)server_cert_pem_start,
     .credentials = {
       .authentication = {
         .certificate = (const char *)client_cert_pem_start,
-        .key = (const char *)client_key_pem_start,
+        .key = (const char *)client_key_pem_start,        
+        .password = "EntryPass@88"
       },
+      .username = "admin",      
     }
   };
 
@@ -153,3 +156,4 @@ void app_main(void)
 
     mqtt_app_start();
 }
+
