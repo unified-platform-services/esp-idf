@@ -231,6 +231,9 @@ void example_wifi_start(void)
   esp_netif_config.if_desc = EXAMPLE_NETIF_DESC_STA;
   esp_netif_config.route_prio = 128;
   s_example_sta_netif = esp_netif_create_wifi(WIFI_IF_STA, &esp_netif_config);
+
+  esp_netif_set_hostname(s_example_sta_netif, CONFIG_ESP32_HOSTNAME);
+
   esp_wifi_set_default_wifi_sta_handlers();
 
   ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));

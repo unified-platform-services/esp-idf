@@ -169,6 +169,7 @@ static esp_netif_t *eth_start(void)
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &on_eth_event, netif));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &eth_on_got_ipv6, NULL));
 #endif
+    esp_netif_set_hostname(netif, CONFIG_ESP32_HOSTNAME);
 
     esp_eth_start(s_eth_handle);
     return netif;
