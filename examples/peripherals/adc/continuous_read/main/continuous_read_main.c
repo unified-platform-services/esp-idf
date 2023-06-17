@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "esp_adc/adc_continuous.h"
+#include "esp_adc_cal.h"
 
 #define EXAMPLE_READ_LEN   256
 #define EXAMPLE_ADC_CONV_MODE           ADC_CONV_SINGLE_UNIT_1
@@ -25,6 +26,7 @@
 
 #if CONFIG_IDF_TARGET_ESP32
 static adc_channel_t channel[2] = {ADC_CHANNEL_6, ADC_CHANNEL_7};
+// static adc_channel_t channel[1] = {ADC_CHANNEL_6};
 #else
 static adc_channel_t channel[2] = {ADC_CHANNEL_2, ADC_CHANNEL_3};
 #endif
@@ -45,6 +47,9 @@ static bool IRAM_ATTR s_conv_done_cb(adc_continuous_handle_t handle, const adc_c
 static void continuous_adc_init(adc_channel_t *channel, uint8_t channel_num, adc_continuous_handle_t *out_handle)
 {
     adc_continuous_handle_t handle = NULL;
+    static esp_adc_cal_characteristics_t adc1_chars;
+
+    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_BIT_DEFAULT, 0, &adc1_chars);
 
     adc_continuous_handle_cfg_t adc_config = {
         .max_store_buf_size = 1024,
@@ -63,7 +68,7 @@ static void continuous_adc_init(adc_channel_t *channel, uint8_t channel_num, adc
     for (int i = 0; i < channel_num; i++) {
         uint8_t unit = ADC_UNIT_1;
         uint8_t ch = channel[i] & 0x7;
-        adc_pattern[i].atten = ADC_ATTEN_DB_0;
+        adc_pattern[i].atten = ADC_ATTEN_DB_11;
         adc_pattern[i].channel = ch;
         adc_pattern[i].unit = unit;
         adc_pattern[i].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH;
@@ -131,7 +136,7 @@ void app_main(void)
                     adc_digi_output_data_t *p = (void*)&result[i];
                     if (check_valid_data(p)) {
                 #if EXAMPLE_ADC_USE_OUTPUT_TYPE1
-                        ESP_LOGI(TAG, "Unit: %d, Channel: %d, Value: %x", 1, p->type1.channel, p->type1.data);
+                        ESP_LOGI(TAG, "Unit: %d, Channel: %d, Value: %d", 1, p->type1.channel, p->type1.data);
                 #else
                         ESP_LOGI(TAG, "Unit: %d,_Channel: %d, Value: %x", 1, p->type2.channel, p->type2.data);
                 #endif
