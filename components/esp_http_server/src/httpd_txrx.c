@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-
 #include <errno.h>
 #include <esp_log.h>
 #include <esp_err.h>
@@ -17,7 +16,8 @@ static const char *TAG = "httpd_txrx";
 esp_err_t httpd_sess_set_send_override(httpd_handle_t hd, int sockfd, httpd_send_func_t send_func)
 {
     struct sock_db *sess = httpd_sess_get(hd, sockfd);
-    if (!sess) {
+    if (!sess)
+    {
         return ESP_ERR_INVALID_ARG;
     }
     sess->send_fn = send_func;
@@ -27,7 +27,8 @@ esp_err_t httpd_sess_set_send_override(httpd_handle_t hd, int sockfd, httpd_send
 esp_err_t httpd_sess_set_recv_override(httpd_handle_t hd, int sockfd, httpd_recv_func_t recv_func)
 {
     struct sock_db *sess = httpd_sess_get(hd, sockfd);
-    if (!sess) {
+    if (!sess)
+    {
         return ESP_ERR_INVALID_ARG;
     }
     sess->recv_fn = recv_func;
@@ -37,7 +38,8 @@ esp_err_t httpd_sess_set_recv_override(httpd_handle_t hd, int sockfd, httpd_recv
 esp_err_t httpd_sess_set_pending_override(httpd_handle_t hd, int sockfd, httpd_pending_func_t pending_func)
 {
     struct sock_db *sess = httpd_sess_get(hd, sockfd);
-    if (!sess) {
+    if (!sess)
+    {
         return ESP_ERR_INVALID_ARG;
     }
     sess->pending_fn = pending_func;
@@ -46,17 +48,20 @@ esp_err_t httpd_sess_set_pending_override(httpd_handle_t hd, int sockfd, httpd_p
 
 int httpd_send(httpd_req_t *r, const char *buf, size_t buf_len)
 {
-    if (r == NULL || buf == NULL) {
+    if (r == NULL || buf == NULL)
+    {
         return HTTPD_SOCK_ERR_INVALID;
     }
 
-    if (!httpd_valid_req(r)) {
+    if (!httpd_valid_req(r))
+    {
         return HTTPD_SOCK_ERR_INVALID;
     }
 
     struct httpd_req_aux *ra = r->aux;
     int ret = ra->sd->send_fn(ra->sd->handle, ra->sd->fd, buf, buf_len, 0);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         ESP_LOGD(TAG, LOG_FMT("error in send_fn"));
         return ret;
     }
@@ -68,14 +73,16 @@ static esp_err_t httpd_send_all(httpd_req_t *r, const char *buf, size_t buf_len)
     struct httpd_req_aux *ra = r->aux;
     int ret;
 
-    while (buf_len > 0) {
+    while (buf_len > 0)
+    {
         ret = ra->sd->send_fn(ra->sd->handle, ra->sd->fd, buf, buf_len, 0);
-        if (ret < 0) {
+        if (ret < 0)
+        {
             ESP_LOGD(TAG, LOG_FMT("error in send_fn"));
             return ESP_FAIL;
         }
         ESP_LOGD(TAG, LOG_FMT("sent = %d"), ret);
-        buf     += ret;
+        buf += ret;
         buf_len -= ret;
     }
     return ESP_OK;
@@ -102,25 +109,29 @@ int httpd_recv_with_opt(httpd_req_t *r, char *buf, size_t buf_len, bool halt_aft
     struct httpd_req_aux *ra = r->aux;
 
     /* First fetch pending data from local buffer */
-    if (ra->sd->pending_len > 0) {
+    if (ra->sd->pending_len > 0)
+    {
         ESP_LOGD(TAG, LOG_FMT("pending length = %d"), ra->sd->pending_len);
         pending_len = httpd_recv_pending(r, buf, buf_len);
-        buf     += pending_len;
+        buf += pending_len;
         buf_len -= pending_len;
 
         /* If buffer filled then no need to recv.
          * If asked to halt after receiving pending data then
          * return with received length */
-        if (!buf_len || halt_after_pending) {
+        if (!buf_len || halt_after_pending)
+        {
             return pending_len;
         }
     }
 
     /* Receive data of remaining length */
     int ret = ra->sd->recv_fn(ra->sd->handle, ra->sd->fd, buf, buf_len, 0);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         ESP_LOGD(TAG, LOG_FMT("error in recv_fn"));
-        if ((ret == HTTPD_SOCK_ERR_TIMEOUT) && (pending_len != 0)) {
+        if ((ret == HTTPD_SOCK_ERR_TIMEOUT) && (pending_len != 0))
+        {
             /* If recv() timeout occurred, but pending data is
              * present, return length of pending data.
              * This behavior is similar to that of socket recv()
@@ -161,19 +172,22 @@ size_t httpd_unrecv(struct httpd_req *r, const char *buf, size_t buf_len)
  */
 esp_err_t httpd_resp_set_hdr(httpd_req_t *r, const char *field, const char *value)
 {
-    if (r == NULL || field == NULL || value == NULL) {
+    if (r == NULL || field == NULL || value == NULL)
+    {
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (!httpd_valid_req(r)) {
+    if (!httpd_valid_req(r))
+    {
         return ESP_ERR_HTTPD_INVALID_REQ;
     }
 
     struct httpd_req_aux *ra = r->aux;
-    struct httpd_data *hd = (struct httpd_data *) r->handle;
+    struct httpd_data *hd = (struct httpd_data *)r->handle;
 
     /* Number of additional headers is limited */
-    if (ra->resp_hdrs_count >= hd->config.max_resp_headers) {
+    if (ra->resp_hdrs_count >= hd->config.max_resp_headers)
+    {
         return ESP_ERR_HTTPD_RESP_HDR;
     }
 
@@ -192,11 +206,13 @@ esp_err_t httpd_resp_set_hdr(httpd_req_t *r, const char *field, const char *valu
  */
 esp_err_t httpd_resp_set_status(httpd_req_t *r, const char *status)
 {
-    if (r == NULL || status == NULL) {
+    if (r == NULL || status == NULL)
+    {
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (!httpd_valid_req(r)) {
+    if (!httpd_valid_req(r))
+    {
         return ESP_ERR_HTTPD_INVALID_REQ;
     }
 
@@ -211,11 +227,13 @@ esp_err_t httpd_resp_set_status(httpd_req_t *r, const char *status)
  */
 esp_err_t httpd_resp_set_type(httpd_req_t *r, const char *type)
 {
-    if (r == NULL || type == NULL) {
+    if (r == NULL || type == NULL)
+    {
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (!httpd_valid_req(r)) {
+    if (!httpd_valid_req(r))
+    {
         return ESP_ERR_HTTPD_INVALID_REQ;
     }
 
@@ -226,11 +244,13 @@ esp_err_t httpd_resp_set_type(httpd_req_t *r, const char *type)
 
 esp_err_t httpd_resp_send(httpd_req_t *r, const char *buf, ssize_t buf_len)
 {
-    if (r == NULL) {
+    if (r == NULL)
+    {
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (!httpd_valid_req(r)) {
+    if (!httpd_valid_req(r))
+    {
         return ESP_ERR_HTTPD_INVALID_REQ;
     }
 
@@ -239,7 +259,8 @@ esp_err_t httpd_resp_send(httpd_req_t *r, const char *buf, ssize_t buf_len)
     const char *colon_separator = ": ";
     const char *cr_lf_seperator = "\r\n";
 
-    if (buf_len == HTTPD_RESP_USE_STRLEN) {
+    if (buf_len == HTTPD_RESP_USE_STRLEN)
+    {
         buf_len = strlen(buf);
     }
 
@@ -248,44 +269,54 @@ esp_err_t httpd_resp_send(httpd_req_t *r, const char *buf, ssize_t buf_len)
 
     /* Size of essential headers is limited by scratch buffer size */
     if (snprintf(ra->scratch, sizeof(ra->scratch), httpd_hdr_str,
-                 ra->status, ra->content_type, buf_len) >= sizeof(ra->scratch)) {
+                 ra->status, ra->content_type, buf_len) >= sizeof(ra->scratch))
+    {
         return ESP_ERR_HTTPD_RESP_HDR;
     }
 
     /* Sending essential headers */
-    if (httpd_send_all(r, ra->scratch, strlen(ra->scratch)) != ESP_OK) {
+    if (httpd_send_all(r, ra->scratch, strlen(ra->scratch)) != ESP_OK)
+    {
         return ESP_ERR_HTTPD_RESP_SEND;
     }
 
     /* Sending additional headers based on set_header */
-    for (unsigned i = 0; i < ra->resp_hdrs_count; i++) {
+    for (unsigned i = 0; i < ra->resp_hdrs_count; i++)
+    {
         /* Send header field */
-        if (httpd_send_all(r, ra->resp_hdrs[i].field, strlen(ra->resp_hdrs[i].field)) != ESP_OK) {
+        if (httpd_send_all(r, ra->resp_hdrs[i].field, strlen(ra->resp_hdrs[i].field)) != ESP_OK)
+        {
             return ESP_ERR_HTTPD_RESP_SEND;
         }
         /* Send ': ' */
-        if (httpd_send_all(r, colon_separator, strlen(colon_separator)) != ESP_OK) {
+        if (httpd_send_all(r, colon_separator, strlen(colon_separator)) != ESP_OK)
+        {
             return ESP_ERR_HTTPD_RESP_SEND;
         }
         /* Send header value */
-        if (httpd_send_all(r, ra->resp_hdrs[i].value, strlen(ra->resp_hdrs[i].value)) != ESP_OK) {
+        if (httpd_send_all(r, ra->resp_hdrs[i].value, strlen(ra->resp_hdrs[i].value)) != ESP_OK)
+        {
             return ESP_ERR_HTTPD_RESP_SEND;
         }
         /* Send CR + LF */
-        if (httpd_send_all(r, cr_lf_seperator, strlen(cr_lf_seperator)) != ESP_OK) {
+        if (httpd_send_all(r, cr_lf_seperator, strlen(cr_lf_seperator)) != ESP_OK)
+        {
             return ESP_ERR_HTTPD_RESP_SEND;
         }
     }
 
     /* End header section */
-    if (httpd_send_all(r, cr_lf_seperator, strlen(cr_lf_seperator)) != ESP_OK) {
+    if (httpd_send_all(r, cr_lf_seperator, strlen(cr_lf_seperator)) != ESP_OK)
+    {
         return ESP_ERR_HTTPD_RESP_SEND;
     }
     esp_http_server_dispatch_event(HTTP_SERVER_EVENT_HEADERS_SENT, &(ra->sd->fd), sizeof(int));
 
     /* Sending content */
-    if (buf && buf_len) {
-        if (httpd_send_all(r, buf, buf_len) != ESP_OK) {
+    if (buf && buf_len)
+    {
+        if (httpd_send_all(r, buf, buf_len) != ESP_OK)
+        {
             return ESP_ERR_HTTPD_RESP_SEND;
         }
     }
@@ -299,15 +330,18 @@ esp_err_t httpd_resp_send(httpd_req_t *r, const char *buf, ssize_t buf_len)
 
 esp_err_t httpd_resp_send_chunk(httpd_req_t *r, const char *buf, ssize_t buf_len)
 {
-    if (r == NULL) {
+    if (r == NULL)
+    {
         return ESP_ERR_INVALID_ARG;
     }
 
-    if (!httpd_valid_req(r)) {
+    if (!httpd_valid_req(r))
+    {
         return ESP_ERR_HTTPD_INVALID_REQ;
     }
 
-    if (buf_len == HTTPD_RESP_USE_STRLEN) {
+    if (buf_len == HTTPD_RESP_USE_STRLEN)
+    {
         buf_len = strlen(buf);
     }
 
@@ -319,40 +353,49 @@ esp_err_t httpd_resp_send_chunk(httpd_req_t *r, const char *buf, ssize_t buf_len
     /* Request headers are no longer available */
     ra->req_hdrs_count = 0;
 
-    if (!ra->first_chunk_sent) {
+    if (!ra->first_chunk_sent)
+    {
         /* Size of essential headers is limited by scratch buffer size */
         if (snprintf(ra->scratch, sizeof(ra->scratch), httpd_chunked_hdr_str,
-                     ra->status, ra->content_type) >= sizeof(ra->scratch)) {
+                     ra->status, ra->content_type) >= sizeof(ra->scratch))
+        {
             return ESP_ERR_HTTPD_RESP_HDR;
         }
 
         /* Sending essential headers */
-        if (httpd_send_all(r, ra->scratch, strlen(ra->scratch)) != ESP_OK) {
+        if (httpd_send_all(r, ra->scratch, strlen(ra->scratch)) != ESP_OK)
+        {
             return ESP_ERR_HTTPD_RESP_SEND;
         }
 
         /* Sending additional headers based on set_header */
-        for (unsigned i = 0; i < ra->resp_hdrs_count; i++) {
+        for (unsigned i = 0; i < ra->resp_hdrs_count; i++)
+        {
             /* Send header field */
-            if (httpd_send_all(r, ra->resp_hdrs[i].field, strlen(ra->resp_hdrs[i].field)) != ESP_OK) {
+            if (httpd_send_all(r, ra->resp_hdrs[i].field, strlen(ra->resp_hdrs[i].field)) != ESP_OK)
+            {
                 return ESP_ERR_HTTPD_RESP_SEND;
             }
             /* Send ': ' */
-            if (httpd_send_all(r, colon_separator, strlen(colon_separator)) != ESP_OK) {
+            if (httpd_send_all(r, colon_separator, strlen(colon_separator)) != ESP_OK)
+            {
                 return ESP_ERR_HTTPD_RESP_SEND;
             }
             /* Send header value */
-            if (httpd_send_all(r, ra->resp_hdrs[i].value, strlen(ra->resp_hdrs[i].value)) != ESP_OK) {
+            if (httpd_send_all(r, ra->resp_hdrs[i].value, strlen(ra->resp_hdrs[i].value)) != ESP_OK)
+            {
                 return ESP_ERR_HTTPD_RESP_SEND;
             }
             /* Send CR + LF */
-            if (httpd_send_all(r, cr_lf_seperator, strlen(cr_lf_seperator)) != ESP_OK) {
+            if (httpd_send_all(r, cr_lf_seperator, strlen(cr_lf_seperator)) != ESP_OK)
+            {
                 return ESP_ERR_HTTPD_RESP_SEND;
             }
         }
 
         /* End header section */
-        if (httpd_send_all(r, cr_lf_seperator, strlen(cr_lf_seperator)) != ESP_OK) {
+        if (httpd_send_all(r, cr_lf_seperator, strlen(cr_lf_seperator)) != ESP_OK)
+        {
             return ESP_ERR_HTTPD_RESP_SEND;
         }
         ra->first_chunk_sent = true;
@@ -361,18 +404,22 @@ esp_err_t httpd_resp_send_chunk(httpd_req_t *r, const char *buf, ssize_t buf_len
     /* Sending chunked content */
     char len_str[10];
     snprintf(len_str, sizeof(len_str), "%x\r\n", buf_len);
-    if (httpd_send_all(r, len_str, strlen(len_str)) != ESP_OK) {
+    if (httpd_send_all(r, len_str, strlen(len_str)) != ESP_OK)
+    {
         return ESP_ERR_HTTPD_RESP_SEND;
     }
 
-    if (buf) {
-        if (httpd_send_all(r, buf, (size_t) buf_len) != ESP_OK) {
+    if (buf)
+    {
+        if (httpd_send_all(r, buf, (size_t)buf_len) != ESP_OK)
+        {
             return ESP_ERR_HTTPD_RESP_SEND;
         }
     }
 
     /* Indicate end of chunk */
-    if (httpd_send_all(r, "\r\n", strlen("\r\n")) != ESP_OK) {
+    if (httpd_send_all(r, "\r\n", strlen("\r\n")) != ESP_OK)
+    {
         return ESP_ERR_HTTPD_RESP_SEND;
     }
     esp_http_server_event_data evt_data = {
@@ -390,55 +437,56 @@ esp_err_t httpd_resp_send_err(httpd_req_t *req, httpd_err_code_t error, const ch
     const char *msg;
     const char *status;
 
-    switch (error) {
-        case HTTPD_501_METHOD_NOT_IMPLEMENTED:
-            status = "501 Method Not Implemented";
-            msg    = "Server does not support this method";
-            break;
-        case HTTPD_505_VERSION_NOT_SUPPORTED:
-            status = "505 Version Not Supported";
-            msg    = "HTTP version not supported by server";
-            break;
-        case HTTPD_400_BAD_REQUEST:
-            status = "400 Bad Request";
-            msg    = "Bad request syntax";
-            break;
-        case HTTPD_401_UNAUTHORIZED:
-            status = "401 Unauthorized";
-            msg    = "No permission -- see authorization schemes";
-            break;
-        case HTTPD_403_FORBIDDEN:
-            status = "403 Forbidden";
-            msg    = "Request forbidden -- authorization will not help";
-            break;
-        case HTTPD_404_NOT_FOUND:
-            status = "404 Not Found";
-            msg    = "Nothing matches the given URI";
-            break;
-        case HTTPD_405_METHOD_NOT_ALLOWED:
-            status = "405 Method Not Allowed";
-            msg    = "Specified method is invalid for this resource";
-            break;
-        case HTTPD_408_REQ_TIMEOUT:
-            status = "408 Request Timeout";
-            msg    = "Server closed this connection";
-            break;
-        case HTTPD_414_URI_TOO_LONG:
-            status = "414 URI Too Long";
-            msg    = "URI is too long";
-            break;
-        case HTTPD_411_LENGTH_REQUIRED:
-            status = "411 Length Required";
-            msg    = "Client must specify Content-Length";
-            break;
-        case HTTPD_431_REQ_HDR_FIELDS_TOO_LARGE:
-            status = "431 Request Header Fields Too Large";
-            msg    = "Header fields are too long";
-            break;
-        case HTTPD_500_INTERNAL_SERVER_ERROR:
-        default:
-            status = "500 Internal Server Error";
-            msg    = "Server has encountered an unexpected error";
+    switch (error)
+    {
+    case HTTPD_501_METHOD_NOT_IMPLEMENTED:
+        status = "501 Method Not Implemented";
+        msg = "Server does not support this method";
+        break;
+    case HTTPD_505_VERSION_NOT_SUPPORTED:
+        status = "505 Version Not Supported";
+        msg = "HTTP version not supported by server";
+        break;
+    case HTTPD_400_BAD_REQUEST:
+        status = "400 Bad Request";
+        msg = "Bad request syntax";
+        break;
+    case HTTPD_401_UNAUTHORIZED:
+        status = "401 Unauthorized";
+        msg = "No permission -- see authorization schemes";
+        break;
+    case HTTPD_403_FORBIDDEN:
+        status = "403 Forbidden";
+        msg = "Request forbidden -- authorization will not help";
+        break;
+    case HTTPD_404_NOT_FOUND:
+        status = "404 Not Found";
+        msg = "Nothing matches the given URI";
+        break;
+    case HTTPD_405_METHOD_NOT_ALLOWED:
+        status = "405 Method Not Allowed";
+        msg = "Specified method is invalid for this resource";
+        break;
+    case HTTPD_408_REQ_TIMEOUT:
+        status = "408 Request Timeout";
+        msg = "Server closed this connection";
+        break;
+    case HTTPD_414_URI_TOO_LONG:
+        status = "414 URI Too Long";
+        msg = "URI is too long";
+        break;
+    case HTTPD_411_LENGTH_REQUIRED:
+        status = "411 Length Required";
+        msg = "Client must specify Content-Length";
+        break;
+    case HTTPD_431_REQ_HDR_FIELDS_TOO_LARGE:
+        status = "431 Request Header Fields Too Large";
+        msg = "Header fields are too long";
+        break;
+    case HTTPD_500_INTERNAL_SERVER_ERROR:
+    default:
+        status = "500 Internal Server Error";
+        msg = "Server has encountered an unexpected error";
     }
 
     /* If user has provided custom message, override default message */
@@ -447,7 +495,10 @@ esp_err_t httpd_resp_send_err(httpd_req_t *req, httpd_err_code_t error, const ch
 
     /* Set error code in HTTP response */
     httpd_resp_set_status(req, status);
-    httpd_resp_set_type(req, HTTPD_TYPE_TEXT);
+    if (usr_msg)
+        httpd_resp_set_type(req, HTTPD_TYPE_JSON);
+    else
+        httpd_resp_set_type(req, HTTPD_TYPE_TEXT);
 
 #ifdef CONFIG_HTTPD_ERR_RESP_NO_DELAY
     /* Use TCP_NODELAY option to force socket to send data in buffer
@@ -455,7 +506,8 @@ esp_err_t httpd_resp_send_err(httpd_req_t *req, httpd_err_code_t error, const ch
      * is closed */
     struct httpd_req_aux *ra = req->aux;
     int nodelay = 1;
-    if (setsockopt(ra->sd->fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
+    if (setsockopt(ra->sd->fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0)
+    {
         /* If failed to turn on TCP_NODELAY, throw warning and continue */
         ESP_LOGW(TAG, LOG_FMT("error calling setsockopt : %d"), errno);
         nodelay = 0;
@@ -467,9 +519,11 @@ esp_err_t httpd_resp_send_err(httpd_req_t *req, httpd_err_code_t error, const ch
 
 #ifdef CONFIG_HTTPD_ERR_RESP_NO_DELAY
     /* If TCP_NODELAY was set successfully above, time to disable it */
-    if (nodelay == 1) {
+    if (nodelay == 1)
+    {
         nodelay = 0;
-        if (setsockopt(ra->sd->fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0) {
+        if (setsockopt(ra->sd->fd, IPPROTO_TCP, TCP_NODELAY, &nodelay, sizeof(nodelay)) < 0)
+        {
             /* If failed to turn off TCP_NODELAY, throw error and
              * return failure to signal for socket closure */
             ESP_LOGE(TAG, LOG_FMT("error calling setsockopt : %d"), errno);
@@ -486,28 +540,32 @@ esp_err_t httpd_register_err_handler(httpd_handle_t handle,
                                      httpd_err_code_t error,
                                      httpd_err_handler_func_t err_handler_fn)
 {
-    if (handle == NULL || error >= HTTPD_ERR_CODE_MAX) {
+    if (handle == NULL || error >= HTTPD_ERR_CODE_MAX)
+    {
         return ESP_ERR_INVALID_ARG;
     }
 
-    struct httpd_data *hd = (struct httpd_data *) handle;
+    struct httpd_data *hd = (struct httpd_data *)handle;
     hd->err_handler_fns[error] = err_handler_fn;
     return ESP_OK;
 }
 
 esp_err_t httpd_req_handle_err(httpd_req_t *req, httpd_err_code_t error)
 {
-    struct httpd_data *hd = (struct httpd_data *) req->handle;
+    struct httpd_data *hd = (struct httpd_data *)req->handle;
     esp_err_t ret;
 
     /* Invoke custom error handler if configured */
-    if (hd->err_handler_fns[error]) {
+    if (hd->err_handler_fns[error])
+    {
         ret = hd->err_handler_fns[error](req, error);
 
         /* If error code is 500, force return failure
          * irrespective of the handler's return value */
         ret = (error == HTTPD_500_INTERNAL_SERVER_ERROR ? ESP_FAIL : ret);
-    } else {
+    }
+    else
+    {
         /* If no handler is registered for this error default
          * behavior is to send the HTTP error response and
          * return failure for closure of underlying socket */
@@ -519,11 +577,13 @@ esp_err_t httpd_req_handle_err(httpd_req_t *req, httpd_err_code_t error)
 
 int httpd_req_recv(httpd_req_t *r, char *buf, size_t buf_len)
 {
-    if (r == NULL || buf == NULL) {
+    if (r == NULL || buf == NULL)
+    {
         return HTTPD_SOCK_ERR_INVALID;
     }
 
-    if (!httpd_valid_req(r)) {
+    if (!httpd_valid_req(r))
+    {
         ESP_LOGW(TAG, LOG_FMT("invalid request"));
         return HTTPD_SOCK_ERR_INVALID;
     }
@@ -531,15 +591,18 @@ int httpd_req_recv(httpd_req_t *r, char *buf, size_t buf_len)
     struct httpd_req_aux *ra = r->aux;
     ESP_LOGD(TAG, LOG_FMT("remaining length = %d"), ra->remaining_len);
 
-    if (buf_len > ra->remaining_len) {
+    if (buf_len > ra->remaining_len)
+    {
         buf_len = ra->remaining_len;
     }
-    if (buf_len == 0) {
+    if (buf_len == 0)
+    {
         return buf_len;
     }
 
     int ret = httpd_recv(r, buf, buf_len);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         ESP_LOGD(TAG, LOG_FMT("error in httpd_recv"));
         return ret;
     }
@@ -555,11 +618,13 @@ int httpd_req_recv(httpd_req_t *r, char *buf, size_t buf_len)
 
 int httpd_req_to_sockfd(httpd_req_t *r)
 {
-    if (r == NULL) {
+    if (r == NULL)
+    {
         return -1;
     }
 
-    if (!httpd_valid_req(r)) {
+    if (!httpd_valid_req(r))
+    {
         ESP_LOGW(TAG, LOG_FMT("invalid request"));
         return -1;
     }
@@ -573,7 +638,8 @@ static int httpd_sock_err(const char *ctx, int sockfd)
     int errval;
     ESP_LOGW(TAG, LOG_FMT("error in %s : %d"), ctx, errno);
 
-    switch(errno) {
+    switch (errno)
+    {
     case EAGAIN:
     case EINTR:
         errval = HTTPD_SOCK_ERR_TIMEOUT;
@@ -593,12 +659,14 @@ static int httpd_sock_err(const char *ctx, int sockfd)
 int httpd_default_send(httpd_handle_t hd, int sockfd, const char *buf, size_t buf_len, int flags)
 {
     (void)hd;
-    if (buf == NULL) {
+    if (buf == NULL)
+    {
         return HTTPD_SOCK_ERR_INVALID;
     }
 
     int ret = send(sockfd, buf, buf_len, flags);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         return httpd_sock_err("send", sockfd);
     }
     return ret;
@@ -607,12 +675,14 @@ int httpd_default_send(httpd_handle_t hd, int sockfd, const char *buf, size_t bu
 int httpd_default_recv(httpd_handle_t hd, int sockfd, char *buf, size_t buf_len, int flags)
 {
     (void)hd;
-    if (buf == NULL) {
+    if (buf == NULL)
+    {
         return HTTPD_SOCK_ERR_INVALID;
     }
 
     int ret = recv(sockfd, buf, buf_len, flags);
-    if (ret < 0) {
+    if (ret < 0)
+    {
         return httpd_sock_err("recv", sockfd);
     }
     return ret;
@@ -621,10 +691,12 @@ int httpd_default_recv(httpd_handle_t hd, int sockfd, char *buf, size_t buf_len,
 int httpd_socket_send(httpd_handle_t hd, int sockfd, const char *buf, size_t buf_len, int flags)
 {
     struct sock_db *sess = httpd_sess_get(hd, sockfd);
-    if (!sess) {
+    if (!sess)
+    {
         return ESP_ERR_INVALID_ARG;
     }
-    if (!sess->send_fn) {
+    if (!sess->send_fn)
+    {
         return ESP_ERR_INVALID_STATE;
     }
     return sess->send_fn(hd, sockfd, buf, buf_len, flags);
@@ -633,10 +705,12 @@ int httpd_socket_send(httpd_handle_t hd, int sockfd, const char *buf, size_t buf
 int httpd_socket_recv(httpd_handle_t hd, int sockfd, char *buf, size_t buf_len, int flags)
 {
     struct sock_db *sess = httpd_sess_get(hd, sockfd);
-    if (!sess) {
+    if (!sess)
+    {
         return ESP_ERR_INVALID_ARG;
     }
-    if (!sess->recv_fn) {
+    if (!sess->recv_fn)
+    {
         return ESP_ERR_INVALID_STATE;
     }
     return sess->recv_fn(hd, sockfd, buf, buf_len, flags);
