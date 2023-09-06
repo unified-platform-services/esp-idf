@@ -54,7 +54,7 @@ int lwip_hook_ip6_input(struct pbuf *p, struct netif *inp);
 #define LWIP_HOOK_IP6_INPUT lwip_hook_ip6_input
 #endif /* CONFIG_LWIP_HOOK_IP6_INPUT_CUSTIOM... */
 
-#if CONFIG_HCB_MODEL_N5200_N5400 || CONFIG_ESP32 || CONFIG_HCB_MODEL_N5150
+#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_ESP32 || CONFIG_HCB_MODEL_N5150
 #define LWIP_HOOK_UNKNOWN_ETH_PROTOCOL(pbuf, netif) eth_unknow_type_hook(pbuf, netif)
 #endif
 
