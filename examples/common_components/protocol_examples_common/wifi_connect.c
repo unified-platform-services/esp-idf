@@ -18,8 +18,7 @@
 #include "esp_log.h"
 
 #if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_ESP32
-//#include "../../../../ESP-WS/HCB-EdgePlus/components/Database/include/nvs_handler.h"
-#include "D:/Projects/EntryPass/Firmware/EDGE-V2/hcb-edge-plus/components/Database/include/nvs_handler.h"
+#include "../../../../ESP-WS/HCB-EdgePlus/components/Database/include/nvs_handler.h"
 #endif
 
 #include <netdb.h>

@@ -18,18 +18,6 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 
-#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_ESP32
-//#include "../../../../ESP-WS/HCB-EdgePlus/components/Database/include/nvs_handler.h"
-#include "D:/Projects/EntryPass/Firmware/EDGE-V2/hcb-edge-plus/components/Database/include/nvs_handler.h"
-#endif
-
-#include "esp_system.h"
-#include <netdb.h>
-
-#define EXAMPLE_MAXIMUM_RETRY         3
-#define EXAMPLE_STATIC_IP_ADDR        "192.168.4.100"
-#define EXAMPLE_STATIC_NETMASK_ADDR   "255.255.255.0"
-#define EXAMPLE_STATIC_GW_ADDR        "192.168.4.1"
 
 static const char *TAG = "ethernet_connect";
 static SemaphoreHandle_t s_semph_get_ip_addrs = NULL;
@@ -85,53 +73,6 @@ static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
 }
 
 #endif // CONFIG_EXAMPLE_CONNECT_IPV6
-
-static void example_set_static_ip(esp_netif_t *netif)
-{
-    if (netif == NULL)
-    {
-            ESP_LOGE(TAG, "netif == NULL");
-    }
-
-    if (esp_netif_dhcpc_stop(netif) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to stop dhcp client");
-        return;
-    }
-    esp_netif_ip_info_t ip;
-    memset(&ip, 0 , sizeof(esp_netif_ip_info_t));
-    ip.ip.addr = ipaddr_addr(EXAMPLE_STATIC_IP_ADDR);
-    ip.netmask.addr = ipaddr_addr(EXAMPLE_STATIC_NETMASK_ADDR);
-    ip.gw.addr = ipaddr_addr(EXAMPLE_STATIC_GW_ADDR);
-    if (esp_netif_set_ip_info(netif, &ip) != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set ip info");
-        return;
-    }
-    ESP_LOGD(TAG, "Success to set static ip: %s, netmask: %s, gw: %s", EXAMPLE_STATIC_IP_ADDR, EXAMPLE_STATIC_NETMASK_ADDR, EXAMPLE_STATIC_GW_ADDR);
-
-}
-
-//TO DO : check
-static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
-                         int32_t event_id, void *event_data)
-{
-    uint8_t mac_addr[6] = {0};
-    /* we can get the ethernet driver handle from event data */
-    esp_eth_handle_t eth_handle = *(esp_eth_handle_t *)event_data;
-
-    switch (event_id) {
-    case ETHERNET_EVENT_CONNECTED:
-        ESP_LOGI(TAG, "Ethernet Connect Link Up");
-
-        esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
-        ESP_LOGI(TAG, "Ethernet HW Addr %02x:%02x:%02x:%02x:%02x:%02x",
-                 mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-
-        example_set_static_ip(esp_netif);
-        break;
-    default:
-        break;
-    }
-}
 
 static esp_eth_handle_t s_eth_handle = NULL;
 static esp_eth_mac_t *s_mac = NULL;
@@ -224,7 +165,6 @@ static esp_netif_t *eth_start(void)
 
     // Register user defined event handers
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &eth_on_got_ip, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &on_eth_event, netif)); //TO DO : check
 #ifdef CONFIG_EXAMPLE_CONNECT_IPV6
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &on_eth_event, netif));
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &eth_on_got_ipv6, NULL));
