@@ -606,6 +606,12 @@ typedef enum {
     /* URI length greater than CONFIG_HTTPD_MAX_URI_LEN */
     HTTPD_414_URI_TOO_LONG,
 
+    /* server understands the content type of the request entity,
+     * and the syntax of the request entity is correct, but it was unable
+     * to process the contained instructions 
+     */
+    HTTPD_422_UNPROCESSABLE_ENTITY,
+
     /* Headers section larger than CONFIG_HTTPD_MAX_REQ_HDR_LEN */
     HTTPD_431_REQ_HDR_FIELDS_TOO_LARGE,
 
