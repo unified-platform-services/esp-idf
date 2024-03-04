@@ -8,9 +8,48 @@
 #include "lwip/prot/dhcp.h"
 #include "lwip/dhcp.h"
 #include "lwip/prot/iana.h"
+#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_HCB2 || CONFIG_EP_EDGE
+#include "lwip/prot/ethernet.h"
+#endif
 #include <string.h>
 
+#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_HCB2 || CONFIG_EP_EDGE
+extern void process_device_discovery_handler(char *req);
+#endif
+
 #define __weak __attribute__((weak))
+
+#if defined (LWIP_HOOK_UNKNOWN_ETH_PROTOCOL)
+err_t eth_unknow_type_hook(struct pbuf *pbuf, struct netif *netif)
+{
+  struct eth_hdr *ethhdr;
+  u16_t type;
+  ethhdr = (struct eth_hdr *)pbuf->payload;
+  type = ethhdr->type;
+
+  /* skip Ethernet header (min. size checked above) */
+  if (pbuf_remove_header(pbuf, SIZEOF_ETH_HDR))
+  {
+    return ESP_FAIL;
+  }
+  else
+  {
+    switch (type)
+    {
+    case PP_HTONS(0x6969):      
+      /* null terminate string */
+      ((char *)(pbuf)->payload)[pbuf->len] = 0;      
+      process_device_discovery_handler((char *)pbuf->payload);
+      break;
+    default:
+      return ESP_FAIL;
+    }
+  }
+
+  return ESP_OK;
+}
+#endif
+
 
 #ifdef CONFIG_LWIP_HOOK_IP6_ROUTE_DEFAULT
 struct netif *__weak

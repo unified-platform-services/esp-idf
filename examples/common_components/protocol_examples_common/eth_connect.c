@@ -17,7 +17,17 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "lwip/ip.h"
 
+#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_ESP32
+#include "../../../../ESP-WS/EdgeV2/components/Database/include/nvs_handler.h"
+//#include "D:/Projects/EntryPass/Firmware/EDGE-V2/hcb-edge-plus/components/Database/include/nvs_handler.h"
+#endif
+
+#define EXAMPLE_MAXIMUM_RETRY         3
+#define EXAMPLE_STATIC_IP_ADDR        "192.168.4.100"
+#define EXAMPLE_STATIC_NETMASK_ADDR   "255.255.255.0"
+#define EXAMPLE_STATIC_GW_ADDR        "192.168.4.1"
 
 static const char *TAG = "ethernet_connect";
 static SemaphoreHandle_t s_semph_get_ip_addrs = NULL;
@@ -42,6 +52,83 @@ static void eth_on_got_ip(void *arg, esp_event_base_t event_base,
     xSemaphoreGive(s_semph_get_ip_addrs);
 }
 
+static esp_err_t set_dns_server(esp_netif_t *netif, uint32_t addr, esp_netif_dns_type_t type)
+{
+  if (addr && (addr != IPADDR_NONE))
+  {
+    esp_netif_dns_info_t dns;
+    dns.ip.u_addr.ip4.addr = addr;
+    dns.ip.type = IPADDR_TYPE_V4;
+    ESP_ERROR_CHECK(esp_netif_set_dns_info(netif, type, &dns));
+  }
+  return ESP_OK;
+}
+
+static void set_static_ip(esp_netif_t *netif)
+{
+#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_ESP32
+  TDevNetworkSettings dev_net_settings;
+#endif
+
+  if (esp_netif_dhcpc_stop(netif) != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Failed to stop dhcp client");
+    return;
+  }
+  esp_netif_ip_info_t ip;
+  memset(&ip, 0, sizeof(esp_netif_ip_info_t));
+
+#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_ESP32
+  ESP_ERROR_CHECK(get_dev_network_settings(&dev_net_settings));
+  ip.ip.addr = ipaddr_addr(dev_net_settings.static_ip_v4_addr);
+  ip.netmask.addr = ipaddr_addr(dev_net_settings.static_ip_netmask);
+  ip.gw.addr = ipaddr_addr(dev_net_settings.static_gw_ip);
+#else
+  ip.ip.addr = ipaddr_addr(EXAMPLE_STATIC_IP_ADDR);
+  ip.netmask.addr = ipaddr_addr(EXAMPLE_STATIC_NETMASK_ADDR);
+  ip.gw.addr = ipaddr_addr(EXAMPLE_STATIC_GW_ADDR);
+#endif
+  if (esp_netif_set_ip_info(netif, &ip) != ESP_OK)
+  {
+    ESP_LOGE(TAG, "Failed to set ip info");
+    return;
+  }
+#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_ESP32
+  ESP_LOGI(TAG, "Success to set static ip from nvs: %s, netmask: %s, gw: %s", dev_net_settings.static_ip_v4_addr, dev_net_settings.static_ip_netmask, dev_net_settings.static_gw_ip);
+  ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[0]), ESP_NETIF_DNS_MAIN));
+  ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[1]), ESP_NETIF_DNS_BACKUP));
+#else  
+  ESP_LOGI(TAG, "Success to set static ip: %s, netmask: %s, gw: %s", EXAMPLE_STATIC_IP_ADDR, EXAMPLE_STATIC_NETMASK_ADDR, EXAMPLE_STATIC_GW_ADDR);
+  ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(EXAMPLE_MAIN_DNS_SERVER), ESP_NETIF_DNS_MAIN));
+  ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(EXAMPLE_BACKUP_DNS_SERVER), ESP_NETIF_DNS_BACKUP));
+#endif
+
+}
+
+static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
+                         int32_t event_id, void *event_data)
+{
+    uint8_t mac_addr[6] = {0};
+    /* we can get the ethernet driver handle from event data */
+    esp_eth_handle_t eth_handle = *(esp_eth_handle_t *)event_data;
+
+    switch (event_id) {
+    case ETHERNET_EVENT_CONNECTED:
+        ESP_LOGI(TAG, "Ethernet Link Up");
+#if CONFIG_EXAMPLE_CONNECT_IPV6
+        ESP_ERROR_CHECK(esp_netif_create_ip6_linklocal(esp_netif));
+#endif
+        esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
+        ESP_LOGI(TAG, "Ethernet HW Addr %02x:%02x:%02x:%02x:%02x:%02x",
+                 mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+
+        set_static_ip(esp_netif);
+        break;
+    default:
+        break;
+    }
+}
+
 #if CONFIG_EXAMPLE_CONNECT_IPV6
 
 static void eth_on_got_ipv6(void *arg, esp_event_base_t event_base,
@@ -56,19 +143,6 @@ static void eth_on_got_ipv6(void *arg, esp_event_base_t event_base,
              IPV62STR(event->ip6_info.ip), example_ipv6_addr_types_to_str[ipv6_type]);
     if (ipv6_type == EXAMPLE_CONNECT_PREFERRED_IPV6_TYPE) {
         xSemaphoreGive(s_semph_get_ip6_addrs);
-    }
-}
-
-static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
-                         int32_t event_id, void *event_data)
-{
-    switch (event_id) {
-    case ETHERNET_EVENT_CONNECTED:
-        ESP_LOGI(TAG, "Ethernet Link Up");
-        ESP_ERROR_CHECK(esp_netif_create_ip6_linklocal(esp_netif));
-        break;
-    default:
-        break;
     }
 }
 
@@ -165,8 +239,8 @@ static esp_netif_t *eth_start(void)
 
     // Register user defined event handers
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &eth_on_got_ip, NULL));
-#ifdef CONFIG_EXAMPLE_CONNECT_IPV6
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &on_eth_event, netif));
+#ifdef CONFIG_EXAMPLE_CONNECT_IPV6
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &eth_on_got_ipv6, NULL));
 #endif
 
