@@ -535,6 +535,10 @@ config SOC_I2C_SUPPORT_SLAVE
     bool
     default y
 
+config SOC_I2C_SUPPORT_HW_FSM_RST
+    bool
+    default y
+
 config SOC_I2C_SUPPORT_HW_CLR_BUS
     bool
     default y
@@ -1128,6 +1132,10 @@ config SOC_FLASH_ENCRYPTION_XTS_AES_128
     default y
 
 config SOC_CRYPTO_DPA_PROTECTION_SUPPORTED
+    bool
+    default y
+
+config SOC_ECDSA_USES_MPI
     bool
     default y
 
