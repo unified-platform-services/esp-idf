@@ -8,12 +8,12 @@
 #include "lwip/prot/dhcp.h"
 #include "lwip/dhcp.h"
 #include "lwip/prot/iana.h"
-#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_HCB2 || CONFIG_EP_EDGE
+#if defined (__IS_EP_EDGE)
 #include "lwip/prot/ethernet.h"
 #endif
 #include <string.h>
 
-#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_HCB2 || CONFIG_EP_EDGE
+#if defined (__IS_EP_EDGE)
 extern void process_device_discovery_handler(char *req);
 #endif
 
