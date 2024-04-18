@@ -19,7 +19,8 @@
 #include "freertos/event_groups.h"
 #include "lwip/ip.h"
 
-#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_ESP32
+#if defined (__IS_EP_EDGE)
+#warning "Please set the correct path to the Edge Workspace"
 #include "../../../../ESP-WS/EdgeV2/components/Database/include/nvs_handler.h"
 //#include "D:/Projects/EntryPass/Firmware/EDGE-V2/hcb-edge-plus/components/Database/include/nvs_handler.h"
 #endif
@@ -66,7 +67,7 @@ static esp_err_t set_dns_server(esp_netif_t *netif, uint32_t addr, esp_netif_dns
 
 static void set_static_ip(esp_netif_t *netif)
 {
-#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_ESP32
+#if defined (__IS_EP_EDGE)
   TDevNetworkSettings dev_net_settings;
 #endif
 
@@ -78,7 +79,7 @@ static void set_static_ip(esp_netif_t *netif)
   esp_netif_ip_info_t ip;
   memset(&ip, 0, sizeof(esp_netif_ip_info_t));
 
-#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_ESP32
+#if defined (__IS_EP_EDGE)
   ESP_ERROR_CHECK(get_dev_network_settings(&dev_net_settings));
   ip.ip.addr = ipaddr_addr(dev_net_settings.static_ip_v4_addr);
   ip.netmask.addr = ipaddr_addr(dev_net_settings.static_ip_netmask);
@@ -93,7 +94,7 @@ static void set_static_ip(esp_netif_t *netif)
     ESP_LOGE(TAG, "Failed to set ip info");
     return;
   }
-#if CONFIG_HCB_MODEL_N5200 || CONFIG_HCB_MODEL_N5400 || CONFIG_HCB_MODEL_N5150 || CONFIG_ESP32
+#if defined (__IS_EP_EDGE)
   ESP_LOGI(TAG, "Success to set static ip from nvs: %s, netmask: %s, gw: %s", dev_net_settings.static_ip_v4_addr, dev_net_settings.static_ip_netmask, dev_net_settings.static_gw_ip);
   ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[0]), ESP_NETIF_DNS_MAIN));
   ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[1]), ESP_NETIF_DNS_BACKUP));
