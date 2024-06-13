@@ -68,7 +68,7 @@ static esp_err_t set_dns_server(esp_netif_t *netif, uint32_t addr, esp_netif_dns
 static void set_static_ip(esp_netif_t *netif)
 {
 #if defined (__IS_EP_EDGE)
-  TDevNetworkSettings dev_net_settings;
+  S_DEV_NETWORK_SETTINGS dev_net_settings;
 #endif
 
   if (esp_netif_dhcpc_stop(netif) != ESP_OK)
