@@ -8,48 +8,44 @@
 #include "lwip/prot/dhcp.h"
 #include "lwip/dhcp.h"
 #include "lwip/prot/iana.h"
-#if defined (__IS_EP_EDGE)
+#if defined(__IS_EP_EDGE)
 #include "lwip/prot/ethernet.h"
 #endif
 #include <string.h>
 
-#if defined (__IS_EP_EDGE)
+#if defined(__IS_EP_EDGE)
 extern void process_device_discovery_handler(char *req);
 #endif
 
 #define __weak __attribute__((weak))
 
-#if defined (LWIP_HOOK_UNKNOWN_ETH_PROTOCOL)
+#if defined(LWIP_HOOK_UNKNOWN_ETH_PROTOCOL)
 err_t eth_unknow_type_hook(struct pbuf *pbuf, struct netif *netif)
 {
-  struct eth_hdr *ethhdr;
-  u16_t type;
-  ethhdr = (struct eth_hdr *)pbuf->payload;
-  type = ethhdr->type;
+    struct eth_hdr *ethhdr;
+    u16_t type;
+    ethhdr = (struct eth_hdr *)pbuf->payload;
+    type = ethhdr->type;
 
-  /* skip Ethernet header (min. size checked above) */
-  if (pbuf_remove_header(pbuf, SIZEOF_ETH_HDR))
-  {
-    return ESP_FAIL;
-  }
-  else
-  {
+    /* skip Ethernet header (min. size checked above) */
+    if (pbuf_remove_header(pbuf, SIZEOF_ETH_HDR))
+        return ERR_VAL;
+
     switch (type)
     {
-    case PP_HTONS(0x6969):      
-      /* null terminate string */
-      ((char *)(pbuf)->payload)[pbuf->len] = 0;      
-      process_device_discovery_handler((char *)pbuf->payload);
-      break;
+    case PP_HTONS(0x6969):
+        /* TODO: tried null terminate string but not working, to investigate */
+        // ((char *)(pbuf)->payload)[pbuf->len] = 0;
+        process_device_discovery_handler((char *)pbuf->payload);        
+        pbuf_free(pbuf);
+        return ERR_OK;
     default:
-      return ESP_FAIL;
+        break;
     }
-  }
 
-  return ESP_OK;
+    return ERR_VAL;
 }
 #endif
-
 
 #ifdef CONFIG_LWIP_HOOK_IP6_ROUTE_DEFAULT
 struct netif *__weak
@@ -114,11 +110,14 @@ bool ip4_netif_exist(const ip4_addr_t *src, const ip4_addr_t *dest)
 {
     struct netif *netif = NULL;
 
-    for (netif = netif_list; netif != NULL; netif = netif->next) {
+    for (netif = netif_list; netif != NULL; netif = netif->next)
+    {
         /* is the netif up, does it have a link and a valid address? */
-        if (netif_is_up(netif) && netif_is_link_up(netif) && !ip4_addr_isany_val(*netif_ip4_addr(netif))) {
+        if (netif_is_up(netif) && netif_is_link_up(netif) && !ip4_addr_isany_val(*netif_ip4_addr(netif)))
+        {
             /* source netif and dest netif match? */
-            if (ip4_addr_netcmp(src, netif_ip4_addr(netif), netif_ip4_netmask(netif)) || ip4_addr_netcmp(dest, netif_ip4_addr(netif), netif_ip4_netmask(netif))) {
+            if (ip4_addr_netcmp(src, netif_ip4_addr(netif), netif_ip4_netmask(netif)) || ip4_addr_netcmp(dest, netif_ip4_addr(netif), netif_ip4_netmask(netif)))
+            {
                 /* return false when both netif don't match */
                 return true;
             }
@@ -132,18 +131,22 @@ bool ip4_netif_exist(const ip4_addr_t *src, const ip4_addr_t *dest)
  * Source based IPv4 routing hook function.
  */
 struct netif *
-ip4_route_src_hook(const ip4_addr_t *src,const ip4_addr_t *dest)
+ip4_route_src_hook(const ip4_addr_t *src, const ip4_addr_t *dest)
 {
     struct netif *netif = NULL;
 
     /* destination IP is broadcast IP? */
-    if ((src != NULL) && !ip4_addr_isany(src)) {
+    if ((src != NULL) && !ip4_addr_isany(src))
+    {
         /* iterate through netifs */
-        for (netif = netif_list; netif != NULL; netif = netif->next) {
+        for (netif = netif_list; netif != NULL; netif = netif->next)
+        {
             /* is the netif up, does it have a link and a valid address? */
-            if (netif_is_up(netif) && netif_is_link_up(netif) && !ip4_addr_isany_val(*netif_ip4_addr(netif))) {
+            if (netif_is_up(netif) && netif_is_link_up(netif) && !ip4_addr_isany_val(*netif_ip4_addr(netif)))
+            {
                 /* source IP matches? */
-                if (ip4_addr_cmp(src, netif_ip4_addr(netif))) {
+                if (ip4_addr_cmp(src, netif_ip4_addr(netif)))
+                {
                     /* return netif on which to forward IP packet */
 
                     return netif;
@@ -156,14 +159,14 @@ ip4_route_src_hook(const ip4_addr_t *src,const ip4_addr_t *dest)
 #endif
 #endif /* LWIP_HOOK_IP4_ROUTE_SRC */
 
-#define LWIP_DHCP_ENABLE_MTU_UPDATE         1
-#define LWIP_DHCP_ENABLE_VENDOR_SPEC_IDS    !ESP_DHCP_DISABLE_VENDOR_CLASS_IDENTIFIER
-#define LWIP_DHCP_ENABLE_CLIENT_ID          !ESP_DHCP_DISABLE_CLIENT_ID
+#define LWIP_DHCP_ENABLE_MTU_UPDATE 1
+#define LWIP_DHCP_ENABLE_VENDOR_SPEC_IDS !ESP_DHCP_DISABLE_VENDOR_CLASS_IDENTIFIER
+#define LWIP_DHCP_ENABLE_CLIENT_ID !ESP_DHCP_DISABLE_CLIENT_ID
 
 #if LWIP_DHCP_ENABLE_VENDOR_SPEC_IDS
-#define DHCP_OPTION_VSI             43
-#define DHCP_OPTION_VCI             60
-#define DHCP_OPTION_VSI_MAX         16
+#define DHCP_OPTION_VSI 43
+#define DHCP_OPTION_VCI 60
+#define DHCP_OPTION_VSI_MAX 16
 
 static u8_t vendor_class_len = 0;
 static char *vendor_class_buf = NULL;
@@ -171,50 +174,55 @@ static u32_t dhcp_option_vsi[DHCP_OPTION_VSI_MAX] = {0};
 
 void dhcp_free_vendor_class_identifier(void)
 {
-  mem_free(vendor_class_buf);
-}
-
-int dhcp_get_vendor_specific_information(uint8_t len, char * str)
-{
-  u8_t copy_len = 0;
-
-  if (len == 0 || str == NULL) {
-    return ERR_ARG;
-  }
-
-  copy_len = LWIP_MIN(len, sizeof(dhcp_option_vsi));
-
-  memcpy(str, dhcp_option_vsi, copy_len);
-
-  return ERR_OK;
-}
-
-int dhcp_set_vendor_class_identifier(uint8_t len, const char * str)
-{
-  if (len == 0 || str == NULL) {
-    return ERR_ARG;
-  }
-
-  if (vendor_class_buf && vendor_class_len != len) {
     mem_free(vendor_class_buf);
-    vendor_class_buf = NULL;
-  }
+}
 
-  if (!vendor_class_buf) {
-    vendor_class_buf = (char *)mem_malloc(len + 1);
-    if (vendor_class_buf == NULL) {
-      return ERR_MEM;
+int dhcp_get_vendor_specific_information(uint8_t len, char *str)
+{
+    u8_t copy_len = 0;
+
+    if (len == 0 || str == NULL)
+    {
+        return ERR_ARG;
     }
 
-    vendor_class_len = len;
-  }
+    copy_len = LWIP_MIN(len, sizeof(dhcp_option_vsi));
 
-  memcpy(vendor_class_buf, str, len);
-  return ERR_OK;
+    memcpy(str, dhcp_option_vsi, copy_len);
+
+    return ERR_OK;
+}
+
+int dhcp_set_vendor_class_identifier(uint8_t len, const char *str)
+{
+    if (len == 0 || str == NULL)
+    {
+        return ERR_ARG;
+    }
+
+    if (vendor_class_buf && vendor_class_len != len)
+    {
+        mem_free(vendor_class_buf);
+        vendor_class_buf = NULL;
+    }
+
+    if (!vendor_class_buf)
+    {
+        vendor_class_buf = (char *)mem_malloc(len + 1);
+        if (vendor_class_buf == NULL)
+        {
+            return ERR_MEM;
+        }
+
+        vendor_class_len = len;
+    }
+
+    memcpy(vendor_class_buf, str, len);
+    return ERR_OK;
 }
 #endif /* LWIP_DHCP_ENABLE_VENDOR_SPEC_IDS */
 
-void dhcp_parse_extra_opts(struct dhcp *dhcp, uint8_t state, uint8_t option, uint8_t len, struct pbuf* p, uint16_t offset)
+void dhcp_parse_extra_opts(struct dhcp *dhcp, uint8_t state, uint8_t option, uint8_t len, struct pbuf *p, uint16_t offset)
 {
     LWIP_UNUSED_ARG(dhcp);
     LWIP_UNUSED_ARG(state);
@@ -224,40 +232,46 @@ void dhcp_parse_extra_opts(struct dhcp *dhcp, uint8_t state, uint8_t option, uin
     LWIP_UNUSED_ARG(offset);
 #if LWIP_DHCP_ENABLE_MTU_UPDATE
     if ((option == DHCP_OPTION_MTU) &&
-     (state == DHCP_STATE_REBOOTING || state == DHCP_STATE_REBINDING ||
-      state == DHCP_STATE_RENEWING  || state == DHCP_STATE_REQUESTING)) {
-    u32_t mtu = 0;
-    struct netif *netif;
-    LWIP_ERROR("dhcp_parse_extra_opts(): MTU option's len != 2", len == 2, return;);
-    LWIP_ERROR("dhcp_parse_extra_opts(): extracting MTU option failed",
-               pbuf_copy_partial(p, &mtu, 2, offset) == 2, return;);
-    mtu = lwip_htons((u16_t)mtu);
-    NETIF_FOREACH(netif) {
-      /* find the netif related to this dhcp */
-      if (dhcp == netif_dhcp_data(netif)) {
-        if (mtu < netif->mtu) {
-          netif->mtu = mtu;
-          LWIP_DEBUGF(DHCP_DEBUG | LWIP_DBG_TRACE, ("dhcp_parse_extra_opts(): Negotiated netif MTU is %d\n", netif->mtu));
+        (state == DHCP_STATE_REBOOTING || state == DHCP_STATE_REBINDING ||
+         state == DHCP_STATE_RENEWING || state == DHCP_STATE_REQUESTING))
+    {
+        u32_t mtu = 0;
+        struct netif *netif;
+        LWIP_ERROR("dhcp_parse_extra_opts(): MTU option's len != 2", len == 2, return;);
+        LWIP_ERROR("dhcp_parse_extra_opts(): extracting MTU option failed",
+                   pbuf_copy_partial(p, &mtu, 2, offset) == 2, return;);
+        mtu = lwip_htons((u16_t)mtu);
+        NETIF_FOREACH(netif)
+        {
+            /* find the netif related to this dhcp */
+            if (dhcp == netif_dhcp_data(netif))
+            {
+                if (mtu < netif->mtu)
+                {
+                    netif->mtu = mtu;
+                    LWIP_DEBUGF(DHCP_DEBUG | LWIP_DBG_TRACE, ("dhcp_parse_extra_opts(): Negotiated netif MTU is %d\n", netif->mtu));
+                }
+                return;
+            }
         }
-        return;
-      }
-    }
-  } /* DHCP_OPTION_MTU */
+    } /* DHCP_OPTION_MTU */
 #endif /* LWIP_DHCP_ENABLE_MTU_UPDATE */
 #if LWIP_DHCP_ENABLE_VENDOR_SPEC_IDS
     if ((option == DHCP_OPTION_VSI) &&
-             (state == DHCP_STATE_REBOOTING || state == DHCP_STATE_REBINDING ||
-              state == DHCP_STATE_RENEWING  || state == DHCP_STATE_REQUESTING || state == DHCP_STATE_SELECTING)) {
-      u8_t n;
-      u32_t value;
-      u16_t copy_len;
-      for (n = 0; n < DHCP_OPTION_VSI_MAX && len > 0; n++) {
-        copy_len = LWIP_MIN(len, 4);
-        LWIP_ERROR("dhcp_parse_extra_opts(): extracting VSI option failed",
-           pbuf_copy_partial(p, &value, copy_len, offset) == copy_len, return;);
-        dhcp_option_vsi[n] = lwip_htonl(value);
-        len -= copy_len;
-      }
+        (state == DHCP_STATE_REBOOTING || state == DHCP_STATE_REBINDING ||
+         state == DHCP_STATE_RENEWING || state == DHCP_STATE_REQUESTING || state == DHCP_STATE_SELECTING))
+    {
+        u8_t n;
+        u32_t value;
+        u16_t copy_len;
+        for (n = 0; n < DHCP_OPTION_VSI_MAX && len > 0; n++)
+        {
+            copy_len = LWIP_MIN(len, 4);
+            LWIP_ERROR("dhcp_parse_extra_opts(): extracting VSI option failed",
+                       pbuf_copy_partial(p, &value, copy_len, offset) == copy_len, return;);
+            dhcp_option_vsi[n] = lwip_htonl(value);
+            len -= copy_len;
+        }
     } /* DHCP_OPTION_VSI */
 #endif /* LWIP_DHCP_ENABLE_VENDOR_SPEC_IDS */
 }
@@ -270,56 +284,64 @@ void dhcp_append_extra_opts(struct netif *netif, uint8_t state, struct dhcp_msg 
     LWIP_UNUSED_ARG(options_out_len);
 #if LWIP_DHCP_ENABLE_CLIENT_ID
     if (state == DHCP_STATE_RENEWING || state == DHCP_STATE_REBINDING ||
-      state == DHCP_STATE_REBOOTING || state == DHCP_STATE_OFF ||
-      state == DHCP_STATE_REQUESTING || state == DHCP_STATE_BACKING_OFF || state == DHCP_STATE_SELECTING) {
-    size_t i;
-    u8_t *options = msg_out->options + *options_out_len;
-    LWIP_ERROR("dhcp_append(client_id): options_out_len + 3 + netif->hwaddr_len <= DHCP_OPTIONS_LEN",
-               *options_out_len + 3U + netif->hwaddr_len <= DHCP_OPTIONS_LEN, return;);
-    *options_out_len = *options_out_len + netif->hwaddr_len + 3;
-    *options++ = DHCP_OPTION_CLIENT_ID;
-    *options++ = netif->hwaddr_len + 1; /* option size */
-    *options++ = LWIP_IANA_HWTYPE_ETHERNET;
-    for (i = 0; i < netif->hwaddr_len; i++) {
-      *options++ = netif->hwaddr[i];
+        state == DHCP_STATE_REBOOTING || state == DHCP_STATE_OFF ||
+        state == DHCP_STATE_REQUESTING || state == DHCP_STATE_BACKING_OFF || state == DHCP_STATE_SELECTING)
+    {
+        size_t i;
+        u8_t *options = msg_out->options + *options_out_len;
+        LWIP_ERROR("dhcp_append(client_id): options_out_len + 3 + netif->hwaddr_len <= DHCP_OPTIONS_LEN",
+                   *options_out_len + 3U + netif->hwaddr_len <= DHCP_OPTIONS_LEN, return;);
+        *options_out_len = *options_out_len + netif->hwaddr_len + 3;
+        *options++ = DHCP_OPTION_CLIENT_ID;
+        *options++ = netif->hwaddr_len + 1; /* option size */
+        *options++ = LWIP_IANA_HWTYPE_ETHERNET;
+        for (i = 0; i < netif->hwaddr_len; i++)
+        {
+            *options++ = netif->hwaddr[i];
+        }
     }
-  }
 #endif /* LWIP_DHCP_ENABLE_CLIENT_ID */
 #if LWIP_DHCP_ENABLE_VENDOR_SPEC_IDS
     if (state == DHCP_STATE_RENEWING || state == DHCP_STATE_REBINDING ||
-      state == DHCP_STATE_REBOOTING || state == DHCP_STATE_OFF ||
-      state == DHCP_STATE_REQUESTING || state == DHCP_STATE_BACKING_OFF || state == DHCP_STATE_SELECTING) {
-    size_t i;
-    const char *p = NULL;
-    u8_t len = 0;
+        state == DHCP_STATE_REBOOTING || state == DHCP_STATE_OFF ||
+        state == DHCP_STATE_REQUESTING || state == DHCP_STATE_BACKING_OFF || state == DHCP_STATE_SELECTING)
+    {
+        size_t i;
+        const char *p = NULL;
+        u8_t len = 0;
 
-    if (vendor_class_buf && vendor_class_len) {
-      p = vendor_class_buf;
-      len = vendor_class_len;
-    } else {
+        if (vendor_class_buf && vendor_class_len)
+        {
+            p = vendor_class_buf;
+            len = vendor_class_len;
+        }
+        else
+        {
 #if LWIP_NETIF_HOSTNAME
-      size_t namelen;
-      if (netif->hostname != NULL && (namelen = strlen(netif->hostname)) < 0xff) {
-        p = netif->hostname;
-        len = (u8_t)namelen;
-      }
+            size_t namelen;
+            if (netif->hostname != NULL && (namelen = strlen(netif->hostname)) < 0xff)
+            {
+                p = netif->hostname;
+                len = (u8_t)namelen;
+            }
 #endif /* LWIP_NETIF_HOSTNAME */
+        }
+        LWIP_ERROR("dhcp_append(vci): options_out_len + 3 + vci_size <= DHCP_OPTIONS_LEN",
+                   *options_out_len + 3U + len <= DHCP_OPTIONS_LEN, return;);
+        if (p)
+        {
+            u8_t *options = msg_out->options + *options_out_len;
+            *options_out_len = *options_out_len + len + 3;
+            *options++ = DHCP_OPTION_VCI;
+            *options++ = len;
+            for (i = 0; i < len; i++)
+            {
+                *options++ = p[i];
+            }
+        }
+        return;
     }
-    LWIP_ERROR("dhcp_append(vci): options_out_len + 3 + vci_size <= DHCP_OPTIONS_LEN",
-               *options_out_len + 3U + len <= DHCP_OPTIONS_LEN, return;);
-    if (p) {
-      u8_t *options = msg_out->options + *options_out_len;
-      *options_out_len = *options_out_len + len + 3;
-      *options++ = DHCP_OPTION_VCI;
-      *options++ = len;
-      for (i = 0; i < len; i ++) {
-        *options++ = p[i];
-      }
-    }
-    return;
-  }
 #endif /* LWIP_DHCP_ENABLE_VENDOR_SPEC_IDS */
-
 }
 
 #endif /* CONFIG_LWIP_IPV4 */
