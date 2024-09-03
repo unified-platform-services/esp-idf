@@ -470,6 +470,10 @@ static inline uint32_t timeout_from_offered(uint32_t lease, uint32_t min)
  */
 #define LWIP_DNS                        1
 
+/** The maximum number of IP addresses per host
+ */
+#define DNS_MAX_HOST_IP                 CONFIG_LWIP_DNS_MAX_HOST_IP
+
 /** The maximum of DNS servers
  */
 #define DNS_MAX_SERVERS                 CONFIG_LWIP_DNS_MAX_SERVERS
@@ -497,6 +501,17 @@ static inline uint32_t timeout_from_offered(uint32_t lease, uint32_t min)
 #define LWIP_DNS_SUPPORT_MDNS_QUERIES   1
 #else
 #define LWIP_DNS_SUPPORT_MDNS_QUERIES   0
+#endif
+
+/**
+ * LWIP_DNS_SETSERVER_WITH_NETIF: If this is turned on, the dns_setserver_with_netif() is enabled and called
+ * from all internal modules (instead of dns_setserver()) allowing to setup a user callback to collect DNS server
+ * information acquired by the related network interface.
+ */
+#ifdef CONFIG_LWIP_DNS_SETSERVER_WITH_NETIF
+#define LWIP_DNS_SETSERVER_WITH_NETIF   1
+#else
+#define LWIP_DNS_SETSERVER_WITH_NETIF   0
 #endif
 
 /*
@@ -1091,9 +1106,19 @@ static inline uint32_t timeout_from_offered(uint32_t lease, uint32_t min)
 #define MPPE_SUPPORT                    CONFIG_LWIP_PPP_MPPE_SUPPORT
 
 /**
+ * PPP_SERVER==1: Enable PPP server support (waiting for incoming PPP session).
+ */
+#define PPP_SERVER                      CONFIG_LWIP_PPP_SERVER_SUPPORT
+
+/**
+ * VJ_SUPPORT==1: Support VJ header compression.
+ */
+#define VJ_SUPPORT                      CONFIG_LWIP_PPP_VJ_HEADER_COMPRESSION
+
+/**
  * PPP_MAXIDLEFLAG: Max Xmit idle time (in ms) before resend flag char.
  * TODO: If PPP_MAXIDLEFLAG > 0 and next package is send during PPP_MAXIDLEFLAG time,
- *       then 0x7E is not added at the begining of PPP package but 0x7E termination
+ *       then 0x7E is not added at the beginning of PPP package but 0x7E termination
  *       is always at the end. This behaviour brokes PPP dial with GSM (PPPoS).
  *       The PPP package should always start and end with 0x7E.
  */
@@ -1125,6 +1150,15 @@ static inline uint32_t timeout_from_offered(uint32_t lease, uint32_t min)
 #else
 #define PPP_SUPPORT                     0
 #endif  /* CONFIG_LWIP_PPP_SUPPORT */
+
+/**
+ * LWIP_USE_EXTERNAL_MBEDTLS: Use external mbed TLS library for crypto implementation used in PPP AUTH
+ */
+#ifdef CONFIG_LWIP_USE_EXTERNAL_MBEDTLS
+#define LWIP_USE_EXTERNAL_MBEDTLS 1
+#else
+#define LWIP_USE_EXTERNAL_MBEDTLS 0
+#endif
 
 /*
    --------------------------------------
@@ -1263,6 +1297,20 @@ static inline uint32_t timeout_from_offered(uint32_t lease, uint32_t min)
  */
 #define LWIP_ND6_NUM_NEIGHBORS          CONFIG_LWIP_IPV6_ND6_NUM_NEIGHBORS
 
+/**
+ * LWIP_ND6_NUM_PREFIXES: Maximum number of entries in IPv6 on-link prefixes cache
+ */
+#define LWIP_ND6_NUM_PREFIXES          CONFIG_LWIP_IPV6_ND6_NUM_PREFIXES
+
+/**
+ * LWIP_ND6_NUM_ROUTERS: Maximum number of entries in IPv6 default routers cache
+ */
+#define LWIP_ND6_NUM_ROUTERS          CONFIG_LWIP_IPV6_ND6_NUM_ROUTERS
+
+/**
+ * LWIP_ND6_NUM_DESTINATIONS: Maximum number of entries in IPv6 destinations cache
+ */
+#define LWIP_ND6_NUM_DESTINATIONS          CONFIG_LWIP_IPV6_ND6_NUM_DESTINATIONS
 /*
    ---------------------------------------
    ---------- Hook options ---------------
