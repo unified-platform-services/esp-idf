@@ -8,19 +8,19 @@
 #include "lwip/prot/dhcp.h"
 #include "lwip/dhcp.h"
 #include "lwip/prot/iana.h"
-#if defined(__IS_EP_EDGE)
+#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
 #include "lwip/prot/ethernet.h"
 #endif
 #include <string.h>
 
-#if defined(__IS_EP_EDGE)
+#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
 extern void process_device_discovery_handler(char *req);
 #endif
 
 #define __weak __attribute__((weak))
 
 #if defined(LWIP_HOOK_UNKNOWN_ETH_PROTOCOL)
-err_t eth_unknow_type_hook(struct pbuf *pbuf, struct netif *netif)
+err_t eth_unknown_type_hook(struct pbuf *pbuf, struct netif *netif)
 {
     struct eth_hdr *ethhdr;
     u16_t type;
