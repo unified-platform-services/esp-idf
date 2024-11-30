@@ -144,7 +144,7 @@ def changeDeviceRole(dut:IdfDut, role:str) -> None:
 def getDataset(dut:IdfDut) -> str:
     clean_buffer(dut)
     execute_command(dut, 'dataset active -x')
-    dut_data = dut.expect(r'\n(\w{212})\r', timeout=5)[1].decode()
+    dut_data = dut.expect(r'\n(\w+)\r', timeout=5)[1].decode()
     return str(dut_data)
 
 
@@ -458,6 +458,26 @@ def get_domain() -> str:
     role = re.findall(r'\[([\w\W]+)\.local\]', str(out_str))[0]
     print('active host is: ', role)
     return str(role)
+
+
+def flush_ipv6_addr_by_interface() -> None:
+    interface_name = get_host_interface_name()
+    print(f'flush ipv6 addr : {interface_name}')
+    command_show_addr = f'ip -6 addr show dev {interface_name}'
+    command_show_route = f'ip -6 route show dev {interface_name}'
+    addr_before = subprocess.getoutput(command_show_addr)
+    route_before = subprocess.getoutput(command_show_route)
+    print(f'Before flush, IPv6 addresses: \n{addr_before}')
+    print(f'Before flush, IPv6 routes: \n{route_before}')
+    subprocess.run(['ip', 'link', 'set', interface_name, 'down'])
+    subprocess.run(['ip', '-6', 'addr', 'flush', 'dev', interface_name])
+    subprocess.run(['ip', '-6', 'route', 'flush', 'dev', interface_name])
+    subprocess.run(['ip', 'link', 'set', interface_name, 'up'])
+    time.sleep(5)
+    addr_after = subprocess.getoutput(command_show_addr)
+    route_after = subprocess.getoutput(command_show_route)
+    print(f'After flush, IPv6 addresses: \n{addr_after}')
+    print(f'After flush, IPv6 routes: \n{route_after}')
 
 
 class tcp_parameter:
