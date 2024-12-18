@@ -31,6 +31,9 @@
 #define EXAMPLE_STATIC_NETMASK_ADDR   "255.255.255.0"
 #define EXAMPLE_STATIC_GW_ADDR        "192.168.4.1"
 
+#define EXAMPLE_MAIN_DNS_SERVER       "8.8.8.8"
+#define EXAMPLE_BACKUP_DNS_SERVER     "8.8.4.4"
+
 static const char *TAG = "ethernet_connect";
 static SemaphoreHandle_t s_semph_get_ip_addrs = NULL;
 #if CONFIG_EXAMPLE_CONNECT_IPV6
