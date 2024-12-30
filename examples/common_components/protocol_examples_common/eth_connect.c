@@ -69,6 +69,7 @@ static esp_err_t set_dns_server(esp_netif_t *netif, uint32_t addr, esp_netif_dns
   return ESP_OK;
 }
 
+#if (CONFIG_USE_DHCP_CLIENT_ETH == 0)
 static void set_static_ip(esp_netif_t *netif)
 {
 #if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
@@ -107,8 +108,8 @@ static void set_static_ip(esp_netif_t *netif)
   ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(EXAMPLE_MAIN_DNS_SERVER), ESP_NETIF_DNS_MAIN));
   ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(EXAMPLE_BACKUP_DNS_SERVER), ESP_NETIF_DNS_BACKUP));
 #endif
-
 }
+#endif
 
 static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
                          int32_t event_id, void *event_data)
@@ -126,8 +127,9 @@ static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
         esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
         ESP_LOGI(TAG, "Ethernet HW Addr %02x:%02x:%02x:%02x:%02x:%02x",
                  mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-
+#if (CONFIG_USE_DHCP_CLIENT_ETH == 0)
         set_static_ip(esp_netif);
+#endif        
         break;
     default:
         break;
