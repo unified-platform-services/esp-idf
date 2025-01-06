@@ -8,16 +8,94 @@
 #include "lwip/prot/dhcp.h"
 #include "lwip/dhcp.h"
 #include "lwip/prot/iana.h"
+#include "lwip/prot/tcp.h"
 #if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
 #include "lwip/prot/ethernet.h"
+#include "lwip/tcp.h"
 #endif
+#include "esp_log.h"
 #include <string.h>
 
+#define DEBUG_EN 1
+
+#if (DEBUG_EN > 0)
+#define IPSTR "%d.%d.%d.%d"
+static const char *TAG = "lwip_hooks";
+#endif
+
 #if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
-extern void process_device_discovery_handler(char *req);
+#define DEF_DISCOVEY_FROM_CUSTOM_ETERTYPE 0
+#define DEF_DISCOVEY_FROM_TCP2020 1
+extern esp_err_t process_device_discovery_handler(char *req, uint8_t mode);
 #endif
 
 #define __weak __attribute__((weak))
+
+#if defined(LWIP_HOOK_IP4_INPUT)
+err_t ip4_input_hook(struct pbuf *pbuf, struct netif *netif)
+{
+    const struct ip_hdr *iphdr;
+    u16_t iphdr_hlen;
+    u16_t iphdr_len;
+    struct pbuf *p = pbuf_clone(PBUF_IP, PBUF_POOL, pbuf);
+
+    if (p == NULL)
+        return 0;
+
+    iphdr = (struct ip_hdr *)p->payload;
+
+    /* obtain IP header length in bytes */
+    iphdr_hlen = IPH_HL_BYTES(iphdr);
+    /* obtain ip length in bytes */
+    iphdr_len = lwip_ntohs(IPH_LEN(iphdr));
+
+    /* copy IP addresses to aligned ip_addr_t */
+    ip_addr_copy_from_ip4(ip_data.current_iphdr_dest, iphdr->dest);
+    ip_addr_copy_from_ip4(ip_data.current_iphdr_src, iphdr->src);
+
+    ip4_addr_t fac_default_ip;
+    IP4_ADDR(&fac_default_ip, 192, 168, 4, 100);
+
+#if (DEBUG_EN > 0)
+    printf("IP Address    : %s %x\r\n", ipaddr_ntoa(ip4_current_dest_addr()), IPH_PROTO(iphdr));
+#endif
+    if (ip4_addr_cmp(ip4_current_dest_addr(), &fac_default_ip) && IPH_PROTO(iphdr) == IP_PROTO_TCP)
+    {
+        pbuf_remove_header(p, iphdr_hlen); /* Move to payload, no check necessary. */
+
+        struct tcp_hdr *tcphdr = (struct tcp_hdr *)p->payload;
+
+#if (DEBUG_EN > 0)
+        printf("tcp src port: %d dest port: %d\r\n", lwip_ntohs(tcphdr->src), lwip_ntohs(tcphdr->dest));
+#endif
+        if (lwip_ntohs(tcphdr->dest) == 2020)
+        {
+            u8_t hdrlen_bytes;
+            /* sanity-check header length */
+            hdrlen_bytes = TCPH_HDRLEN_BYTES(tcphdr);
+            if ((hdrlen_bytes < TCP_HLEN) || (hdrlen_bytes > p->tot_len))
+            {
+                LWIP_DEBUGF(TCP_INPUT_DEBUG, ("tcp_input: invalid header length (%" U16_F ")\n", (u16_t)hdrlen_bytes));
+                TCP_STATS_INC(tcp.lenerr);
+                pbuf_free(p);
+                return 0;
+            }
+            else
+            {
+                pbuf_remove_header(p, hdrlen_bytes); /* Move to payload, no check necessary. */
+                if (process_device_discovery_handler((char *)p->payload, DEF_DISCOVEY_FROM_TCP2020) == ESP_OK)
+                {
+                    pbuf_free(p);
+                    pbuf_free(pbuf);
+                    return 1;
+                }
+            }
+        }
+    }
+    pbuf_free(p);
+    return 0;
+}
+#endif
 
 #if defined(LWIP_HOOK_UNKNOWN_ETH_PROTOCOL)
 err_t eth_unknown_type_hook(struct pbuf *pbuf, struct netif *netif)
@@ -36,7 +114,7 @@ err_t eth_unknown_type_hook(struct pbuf *pbuf, struct netif *netif)
     case PP_HTONS(0x6969):
         /* TODO: tried null terminate string but not working, to investigate */
         // ((char *)(pbuf)->payload)[pbuf->len] = 0;
-        process_device_discovery_handler((char *)pbuf->payload);        
+        process_device_discovery_handler((char *)pbuf->payload, DEF_DISCOVEY_FROM_CUSTOM_ETERTYPE);
         pbuf_free(pbuf);
         return ERR_OK;
     default:
@@ -105,7 +183,8 @@ int __weak lwip_hook_ip6_input(struct pbuf *p, struct netif *inp)
     /* Check if the first IPv6 address (link-local) is unassigned (all zeros).
      * If the address is empty, it indicates that no link-local address has been configured,
      * and the interface should not accept incoming IPv6 traffic. */
-    if (ip6_addr_isany(ip_2_ip6(&inp->ip6_addr[0]))) {
+    if (ip6_addr_isany(ip_2_ip6(&inp->ip6_addr[0])))
+    {
         /* We don't have an LL address -> eat this packet here, so it won't get accepted on the input netif */
         pbuf_free(p);
         return 1;

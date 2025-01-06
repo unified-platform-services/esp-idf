@@ -72,10 +72,16 @@ int lwip_hook_ip6_input(struct pbuf *p, struct netif *inp);
 
 #if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
 #define LWIP_HOOK_UNKNOWN_ETH_PROTOCOL(pbuf, netif) eth_unknown_type_hook(pbuf, netif)
+
+// #define LWIP_HOOK_IP4_INPUT(pbuf,input_netif) ip4_input_hook(pbuf,input_netif)
 #endif
 
 #if defined (LWIP_HOOK_UNKNOWN_ETH_PROTOCOL)
 err_t eth_unknown_type_hook(struct pbuf* pbuf, struct netif* netif);
+#endif
+
+#if defined (LWIP_HOOK_IP4_INPUT)
+err_t ip4_input_hook(struct pbuf* pbuf, struct netif* netif);
 #endif
 
 #ifdef CONFIG_LWIP_IPV4
