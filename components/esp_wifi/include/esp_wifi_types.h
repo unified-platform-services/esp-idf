@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2015-2024 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2015-2025 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -55,8 +55,12 @@ typedef struct {
     wifi_country_policy_t policy;  /**< country policy */
 } wifi_country_t;
 
-/* Strength of authmodes */
-/* OPEN < WEP < WPA_PSK < OWE < WPA2_PSK = WPA_WPA2_PSK < WAPI_PSK < WPA3_PSK = WPA2_WPA3_PSK */
+/**
+  * @brief Wi-Fi authmode type
+  * Strength of authmodes
+  * Personal Networks   : OPEN < WEP < WPA_PSK < OWE < WPA2_PSK = WPA_WPA2_PSK < WAPI_PSK < WPA3_PSK = WPA2_WPA3_PSK
+  * Enterprise Networks : WIFI_AUTH_WPA2_ENTERPRISE < WIFI_AUTH_WPA3_ENTERPRISE = WIFI_AUTH_WPA2_WPA3_ENTERPRISE < WIFI_AUTH_WPA3_ENT_192
+  */
 typedef enum {
     WIFI_AUTH_OPEN = 0,         /**< authenticate mode : open */
     WIFI_AUTH_WEP,              /**< authenticate mode : WEP */
@@ -72,6 +76,9 @@ typedef enum {
     WIFI_AUTH_WPA3_ENT_192,     /**< authenticate mode : WPA3_ENT_SUITE_B_192_BIT */
     WIFI_AUTH_WPA3_EXT_PSK,     /**< this authentication mode will yield same result as WIFI_AUTH_WPA3_PSK and not recommended to be used. It will be deprecated in future, please use WIFI_AUTH_WPA3_PSK instead. */
     WIFI_AUTH_WPA3_EXT_PSK_MIXED_MODE, /**< this authentication mode will yield same result as WIFI_AUTH_WPA3_PSK and not recommended to be used. It will be deprecated in future, please use WIFI_AUTH_WPA3_PSK instead.*/
+    WIFI_AUTH_DUMMY_1,          /**< Dummy placeholder authenticate mode for WIFI_AUTH_DPP */
+    WIFI_AUTH_WPA3_ENTERPRISE,  /**< authenticate mode : WPA3-Enterprise Only Mode */
+    WIFI_AUTH_WPA2_WPA3_ENTERPRISE, /**< authenticate mode : WPA3-Enterprise Transition Mode */
     WIFI_AUTH_MAX
 } wifi_auth_mode_t;
 
@@ -1146,6 +1153,17 @@ typedef struct {
     uint8_t ndp_id;                             /**< NDP instance id */
     uint8_t init_ndi[6];                        /**< Initiator's NAN Data Interface MAC */
 } wifi_event_ndp_terminated_t;
+
+/**
+  * @brief Argument structure for wifi_tx_rate_config
+  */
+typedef struct {
+    wifi_phy_mode_t phymode;                 /**< Phymode of specified interface */
+    wifi_phy_rate_t rate;                    /**< Rate of specified interface */
+    bool ersu;                               /**< Using ERSU to send frame, ERSU is a transmission mode related to 802.11 ax.
+                                                  ERSU is always used in long distance transmission, and its frame has lower rate compared with SU mode */
+    bool dcm;                                /**< Using dcm rate to send frame */
+} wifi_tx_rate_config_t;
 
 #ifdef __cplusplus
 }
