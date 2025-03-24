@@ -657,10 +657,14 @@ menu "Security features"
             attackers by preventing spoofing of OTA updates.
 
     config SECURE_BOOT
+        # depends on EP_RELEASE_MODE
         bool "Enable hardware Secure Boot in bootloader (READ DOCS FIRST)"
-        default n
-        # Secure boot is not supported for ESP32-C3 revision < v0.3
+        # default y if (EP_RELEASE_MODE && (SOC_SECURE_BOOT_SUPPORTED && !(IDF_TARGET_ESP32C3 && ESP32C3_REV_MIN_FULL < 3)))
+        default y
+        # default y if EP_RELEASE_MODE
+
         depends on SOC_SECURE_BOOT_SUPPORTED && !(IDF_TARGET_ESP32C3 && ESP32C3_REV_MIN_FULL < 3)
+        # Secure boot is not supported for ESP32-C3 revision < v0.3
         select ESPTOOLPY_NO_STUB if !IDF_TARGET_ESP32 && !IDF_TARGET_ESP32S2
         help
             Build a bootloader which enables Secure Boot on first boot.
@@ -707,7 +711,8 @@ menu "Security features"
     choice SECURE_BOOTLOADER_MODE
         bool "Secure bootloader mode"
         depends on SECURE_BOOT_V1_ENABLED
-        default SECURE_BOOTLOADER_ONE_TIME_FLASH
+        default SECURE_BOOTLOADER_REFLASHABLE
+        # default SECURE_BOOTLOADER_ONE_TIME_FLASH
 
         config SECURE_BOOTLOADER_ONE_TIME_FLASH
             bool "One-time flash"
@@ -846,8 +851,11 @@ menu "Security features"
             Refer to the Secure Boot section of the ESP-IDF Programmer's Guide for this version before enabling.
 
     config SECURE_FLASH_ENC_ENABLED
+        depends on EP_RELEASE_MODE
         bool "Enable flash encryption on boot (READ DOCS FIRST)"
-        default N
+        default y if EP_RELEASE_MODE
+        # default n
+
         select SPI_FLASH_ENABLE_ENCRYPTED_READ_WRITE
         help
             If this option is set, flash contents will be encrypted by the bootloader on first boot.
@@ -889,7 +897,8 @@ menu "Security features"
     choice SECURE_FLASH_ENCRYPTION_MODE
         bool "Enable usage mode"
         depends on SECURE_FLASH_ENC_ENABLED
-        default SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT
+        default SECURE_FLASH_ENCRYPTION_MODE_RELEASE if EP_RELEASE_MODE
+        # default SECURE_FLASH_ENCRYPTION_MODE_DEVELOPMENT
         help
             By default Development mode is enabled which allows ROM download mode to perform flash encryption
             operations (plaintext is sent to the device, and it encrypts it internally and writes ciphertext
