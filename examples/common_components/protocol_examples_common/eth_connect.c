@@ -83,7 +83,7 @@ static void set_static_ip(esp_netif_t *netif)
     memset(&ip, 0, sizeof(esp_netif_ip_info_t));
 
 #if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
-    ESP_ERROR_CHECK(get_dev_network_settings(&dev_net_settings));
+    ESP_ERROR_CHECK(get_dev_network_settings(&dev_net_settings, E_GET_DEV_NETWORK_MODE_NORMAL));
     ip.ip.addr = ipaddr_addr(dev_net_settings.static_ip_v4_addr);
     ip.netmask.addr = ipaddr_addr(dev_net_settings.static_ip_netmask);
     ip.gw.addr = ipaddr_addr(dev_net_settings.static_gw_ip);
@@ -130,7 +130,7 @@ static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
         set_static_ip(esp_netif);
 #else
         S_DEV_NETWORK_SETTINGS dev_net_settings;
-        esp_err_t ret = get_dev_network_settings(&dev_net_settings);
+        esp_err_t ret = get_dev_network_settings(&dev_net_settings, E_GET_DEV_NETWORK_MODE_NORMAL);
 
         ESP_LOGI(TAG, "get_dev_network_settings ret: %s", esp_err_to_name(ret));
 
