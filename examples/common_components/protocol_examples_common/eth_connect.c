@@ -19,11 +19,12 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "lwip/ip.h"
-#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
+// #if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
 #warning "Please set the correct path to the Edge Workspace"
-#include "../../../../../components/Database/include/nvs_handler.h"
-//#include "D:/Projects/EntryPass/Firmware/EDGE-V2/hcb-edge-plus/components/Database/include/nvs_handler.h"
-#endif
+// #include "../../../../../components/Database/include/nvs_handler.h"
+#include "../../../../work_EP/Git_Project/EdgePlus_Trans_Sim/main/dev_setting.h"
+// #include "D:/Projects/EntryPass/Firmware/EDGE-V2/hcb-edge-plus/components/Database/include/nvs_handler.h"
+//  #endif
 
 #define EXAMPLE_MAXIMUM_RETRY         3
 #define EXAMPLE_STATIC_IP_ADDR        "192.168.4.100"
@@ -46,7 +47,7 @@ static void eth_stop(void);
 /** Event handler for Ethernet events */
 
 static void eth_on_got_ip(void *arg, esp_event_base_t event_base,
-                      int32_t event_id, void *event_data)
+                          int32_t event_id, void *event_data)
 {
     ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
     if (!example_is_our_netif(EXAMPLE_NETIF_DESC_ETH, event->esp_netif)) {
@@ -58,57 +59,57 @@ static void eth_on_got_ip(void *arg, esp_event_base_t event_base,
 
 static esp_err_t set_dns_server(esp_netif_t *netif, uint32_t addr, esp_netif_dns_type_t type)
 {
-  if (addr && (addr != IPADDR_NONE))
-  {
-    esp_netif_dns_info_t dns;
-    dns.ip.u_addr.ip4.addr = addr;
-    dns.ip.type = IPADDR_TYPE_V4;
-    ESP_ERROR_CHECK(esp_netif_set_dns_info(netif, type, &dns));
-  }
-  return ESP_OK;
+    if (addr && (addr != IPADDR_NONE))
+    {
+        esp_netif_dns_info_t dns;
+        dns.ip.u_addr.ip4.addr = addr;
+        dns.ip.type = IPADDR_TYPE_V4;
+        ESP_ERROR_CHECK(esp_netif_set_dns_info(netif, type, &dns));
+    }
+    return ESP_OK;
 }
 
-#if (CONFIG_USE_DHCP_CLIENT_ETH == 0)
+// #if (CONFIG_USE_DHCP_CLIENT_ETH == 0)
 static void set_static_ip(esp_netif_t *netif)
 {
-#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
-  S_DEV_NETWORK_SETTINGS dev_net_settings;
-#endif
+    // #if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
+    S_DEV_NETWORK_SETTINGS dev_net_settings;
+    // #endif
 
-  if (esp_netif_dhcpc_stop(netif) != ESP_OK)
-  {
-    ESP_LOGE(TAG, "Failed to stop dhcp client");
-    return;
-  }
-  esp_netif_ip_info_t ip;
-  memset(&ip, 0, sizeof(esp_netif_ip_info_t));
+    if (esp_netif_dhcpc_stop(netif) != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to stop dhcp client");
+        return;
+    }
+    esp_netif_ip_info_t ip;
+    memset(&ip, 0, sizeof(esp_netif_ip_info_t));
 
-#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
-  ESP_ERROR_CHECK(get_dev_network_settings(&dev_net_settings));
-  ip.ip.addr = ipaddr_addr(dev_net_settings.static_ip_v4_addr);
-  ip.netmask.addr = ipaddr_addr(dev_net_settings.static_ip_netmask);
-  ip.gw.addr = ipaddr_addr(dev_net_settings.static_gw_ip);
-#else
-  ip.ip.addr = ipaddr_addr(EXAMPLE_STATIC_IP_ADDR);
-  ip.netmask.addr = ipaddr_addr(EXAMPLE_STATIC_NETMASK_ADDR);
-  ip.gw.addr = ipaddr_addr(EXAMPLE_STATIC_GW_ADDR);
-#endif
-  if (esp_netif_set_ip_info(netif, &ip) != ESP_OK)
-  {
-    ESP_LOGE(TAG, "Failed to set ip info");
-    return;
-  }
-#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
-  ESP_LOGI(TAG, "Success to set static ip from nvs: %s, netmask: %s, gw: %s", dev_net_settings.static_ip_v4_addr, dev_net_settings.static_ip_netmask, dev_net_settings.static_gw_ip);
-  ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[0]), ESP_NETIF_DNS_MAIN));
-  ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[1]), ESP_NETIF_DNS_BACKUP));
-#else  
-  ESP_LOGI(TAG, "Success to set static ip: %s, netmask: %s, gw: %s", EXAMPLE_STATIC_IP_ADDR, EXAMPLE_STATIC_NETMASK_ADDR, EXAMPLE_STATIC_GW_ADDR);
-  ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(EXAMPLE_MAIN_DNS_SERVER), ESP_NETIF_DNS_MAIN));
-  ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(EXAMPLE_BACKUP_DNS_SERVER), ESP_NETIF_DNS_BACKUP));
-#endif
+    // #if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
+    ESP_ERROR_CHECK(get_dev_network_settings(&dev_net_settings));
+    ip.ip.addr = ipaddr_addr(dev_net_settings.static_ip_v4_addr);
+    ip.netmask.addr = ipaddr_addr(dev_net_settings.static_ip_netmask);
+    ip.gw.addr = ipaddr_addr(dev_net_settings.static_gw_ip);
+    // #else
+    //   ip.ip.addr = ipaddr_addr(EXAMPLE_STATIC_IP_ADDR);
+    //   ip.netmask.addr = ipaddr_addr(EXAMPLE_STATIC_NETMASK_ADDR);
+    //   ip.gw.addr = ipaddr_addr(EXAMPLE_STATIC_GW_ADDR);
+    // #endif
+    if (esp_netif_set_ip_info(netif, &ip) != ESP_OK)
+    {
+        ESP_LOGE(TAG, "Failed to set ip info");
+        return;
+    }
+    // #if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
+    ESP_LOGI(TAG, "Success to set static ip from nvs: %s, netmask: %s, gw: %s", dev_net_settings.static_ip_v4_addr, dev_net_settings.static_ip_netmask, dev_net_settings.static_gw_ip);
+    ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[0]), ESP_NETIF_DNS_MAIN));
+    ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[1]), ESP_NETIF_DNS_BACKUP));
+    // #else
+    //   ESP_LOGI(TAG, "Success to set static ip: %s, netmask: %s, gw: %s", EXAMPLE_STATIC_IP_ADDR, EXAMPLE_STATIC_NETMASK_ADDR, EXAMPLE_STATIC_GW_ADDR);
+    //   ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(EXAMPLE_MAIN_DNS_SERVER), ESP_NETIF_DNS_MAIN));
+    //   ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(EXAMPLE_BACKUP_DNS_SERVER), ESP_NETIF_DNS_BACKUP));
+    // #endif
 }
-#endif
+// #endif
 
 static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
                          int32_t event_id, void *event_data)
@@ -126,9 +127,20 @@ static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
         esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
         ESP_LOGI(TAG, "Ethernet HW Addr %02x:%02x:%02x:%02x:%02x:%02x",
                  mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-#if (CONFIG_USE_DHCP_CLIENT_ETH == 0)
-        set_static_ip(esp_netif);
-#endif        
+        // #if (CONFIG_USE_DHCP_CLIENT_ETH == 0)
+        S_DEV_NETWORK_SETTINGS dev_net_settings;
+        get_dev_network_settings(&dev_net_settings);
+        if (dev_net_settings.dhcp_enable == false)
+        {
+            ESP_LOGI(TAG, "Static IP mode");
+            set_static_ip(esp_netif);
+        }
+        else
+        {
+            ESP_LOGI(TAG, "DHCP mode");
+            esp_netif_dhcpc_start(esp_netif);
+        }
+        // #endif
         break;
     default:
         break;
@@ -138,7 +150,7 @@ static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
 #if CONFIG_EXAMPLE_CONNECT_IPV6
 
 static void eth_on_got_ipv6(void *arg, esp_event_base_t event_base,
-                        int32_t event_id, void *event_data)
+                            int32_t event_id, void *event_data)
 {
     ip_event_got_ip6_t *event = (ip_event_got_ip6_t *)event_data;
     if (!example_is_our_netif(EXAMPLE_NETIF_DESC_ETH, event->esp_netif)) {
