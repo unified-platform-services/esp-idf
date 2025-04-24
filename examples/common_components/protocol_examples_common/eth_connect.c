@@ -97,10 +97,12 @@ static void set_static_ip(esp_netif_t *netif)
         ESP_LOGE(TAG, "Failed to set ip info");
         return;
     }
-#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
-    ESP_LOGI(TAG, "Success to set static ip from nvs: %s, netmask: %s, gw: %s", dev_net_settings.static_ip_v4_addr, dev_net_settings.static_ip_netmask, dev_net_settings.static_gw_ip);
+#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)    
     ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[0]), ESP_NETIF_DNS_MAIN));
     ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[1]), ESP_NETIF_DNS_BACKUP));
+    ESP_LOGI(TAG, "Success to set static ip from nvs: %s, netmask: %s, gw: %s dns1: %s dns2: %s", 
+        dev_net_settings.static_ip_v4_addr, dev_net_settings.static_ip_netmask, dev_net_settings.static_gw_ip,
+        dev_net_settings.dns_ip[0], dev_net_settings.dns_ip[1]);
 #else
     ESP_LOGI(TAG, "Success to set static ip: %s, netmask: %s, gw: %s", EXAMPLE_STATIC_IP_ADDR, EXAMPLE_STATIC_NETMASK_ADDR, EXAMPLE_STATIC_GW_ADDR);
     ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(EXAMPLE_MAIN_DNS_SERVER), ESP_NETIF_DNS_MAIN));

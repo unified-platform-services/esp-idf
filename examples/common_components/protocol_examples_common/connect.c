@@ -64,8 +64,14 @@ static esp_err_t print_all_ips_tcpip(void* ctx)
 #if CONFIG_EXAMPLE_CONNECT_IPV4
             esp_netif_ip_info_t ip;
             ESP_ERROR_CHECK(esp_netif_get_ip_info(netif, &ip));
-
             ESP_LOGI(TAG, "- IPv4 address: " IPSTR ",", IP2STR(&ip.ip));
+
+            esp_netif_dns_info_t dns;
+            ESP_ERROR_CHECK(esp_netif_get_dns_info(netif, ESP_NETIF_DNS_MAIN, &dns));
+            ESP_LOGI(TAG, "- DNS1: " IPSTR, IP2STR(&dns.ip.u_addr.ip4));
+
+            ESP_ERROR_CHECK(esp_netif_get_dns_info(netif, ESP_NETIF_DNS_BACKUP, &dns));
+            ESP_LOGI(TAG, "- DNS2: " IPSTR, IP2STR(&dns.ip.u_addr.ip4));      
 #endif
 #if CONFIG_EXAMPLE_CONNECT_IPV6
             esp_ip6_addr_t ip6[MAX_IP6_ADDRS_PER_NETIF];
