@@ -1079,13 +1079,59 @@ static uint32_t UART_ISR_ATTR uart_enable_tx_write_fifo(uart_port_t uart_num, co
     return sent_len;
 }
 
+static void UART_ISR_ATTR uart_osdp_intr_handler(void *param)
+{
+    uart_obj_t *p_uart = (uart_obj_t *) param;
+    uint8_t uart_num = p_uart->uart_num;
+    uart_event_t uart_event;
+    BaseType_t HPTaskAwoken = 0;
+    bool need_yield = false;
+    volatile uint32_t uart_intr_status = 0;
+    
+    uart_intr_status = uart_hal_get_intsts_mask(&(uart_context[uart_num].hal));
+
+    // gpio_set_level(uart_context[uart_num].rts_io_num, 0); // Default to receive mode    
+    if (uart_intr_status & UART_INTR_TX_DONE) {        
+        gpio_set_level(uart_context[uart_num].rts_io_num, 0); // Default to receive mode
+        // uart_hal_set_rts(&(uart_context[uart_num].hal), 1);
+        xSemaphoreGiveFromISR(p_uart_obj[uart_num]->tx_done_sem, &HPTaskAwoken);
+        need_yield |= (HPTaskAwoken == pdTRUE);
+
+        // if (UART_IS_MODE_SET(uart_num, UART_MODE_RS485_HALF_DUPLEX) && uart_hal_is_tx_idle(&(uart_context[uart_num].hal)) != true) {
+        //     // The TX_DONE interrupt is triggered but transmit is active
+        //     // then postpone interrupt processing for next interrupt
+        //     uart_event.type = UART_EVENT_MAX;                
+        // } else {
+        //     // Workaround for RS485: If the RS485 half duplex mode is active
+        //     // and transmitter is in idle state then reset received buffer and reset RTS pin
+        //     // skip this behavior for other UART modes
+        //     uart_hal_clr_intsts_mask(&(uart_context[uart_num].hal), UART_INTR_TX_DONE);
+        //     UART_ENTER_CRITICAL_ISR(&(uart_context[uart_num].spinlock));
+        //     uart_hal_disable_intr_mask(&(uart_context[uart_num].hal), UART_INTR_TX_DONE);
+        //     if (UART_IS_MODE_SET(uart_num, UART_MODE_RS485_HALF_DUPLEX)) {
+        //         uart_hal_set_rts(&(uart_context[uart_num].hal), 1);
+        //         uart_hal_rxfifo_rst(&(uart_context[uart_num].hal));                    
+        //     }
+        //     UART_EXIT_CRITICAL_ISR(&(uart_context[uart_num].spinlock));
+        //     xSemaphoreGiveFromISR(p_uart_obj[uart_num]->tx_done_sem, &HPTaskAwoken);
+        //     need_yield |= (HPTaskAwoken == pdTRUE);
+        // }
+    }
+
+    uart_hal_clr_intsts_mask(&(uart_context[uart_num].hal), uart_intr_status); /*simply clear all other intr status*/
+    
+    if (need_yield) {
+        portYIELD_FROM_ISR();
+    }
+}
+
 //internal isr handler for default driver code.
 static void UART_ISR_ATTR uart_rx_intr_handler_default(void *param)
 {
     uart_obj_t *p_uart = (uart_obj_t *) param;
     uint8_t uart_num = p_uart->uart_num;
     int rx_fifo_len = 0;
-    uint32_t uart_intr_status = 0;
+    volatile uint32_t uart_intr_status = 0;
     uart_event_t uart_event;
     BaseType_t HPTaskAwoken = 0;
     bool need_yield = false;
@@ -1095,12 +1141,32 @@ static void UART_ISR_ATTR uart_rx_intr_handler_default(void *param)
         // The `continue statement` may cause the interrupt to loop infinitely
         // we exit the interrupt here
         uart_intr_status = uart_hal_get_intsts_mask(&(uart_context[uart_num].hal));
-        //Exit form while loop
-        if (uart_intr_status == 0) {
-            break;
-        }
+
         uart_event.type = UART_EVENT_MAX;
-        if (uart_intr_status & UART_INTR_TXFIFO_EMPTY) {
+        if (uart_intr_status & UART_INTR_TX_DONE) {
+            if (UART_IS_MODE_SET(uart_num, UART_MODE_RS485_HALF_DUPLEX))
+                uart_hal_set_rts(&(uart_context[uart_num].hal), 1);
+
+            if (UART_IS_MODE_SET(uart_num, UART_MODE_RS485_HALF_DUPLEX) && uart_hal_is_tx_idle(&(uart_context[uart_num].hal)) != true) {
+                // The TX_DONE interrupt is triggered but transmit is active
+                // then postpone interrupt processing for next interrupt
+                uart_event.type = UART_EVENT_MAX;                
+            } else {
+                // Workaround for RS485: If the RS485 half duplex mode is active
+                // and transmitter is in idle state then reset received buffer and reset RTS pin
+                // skip this behavior for other UART modes
+                uart_hal_clr_intsts_mask(&(uart_context[uart_num].hal), UART_INTR_TX_DONE);
+                UART_ENTER_CRITICAL_ISR(&(uart_context[uart_num].spinlock));
+                uart_hal_disable_intr_mask(&(uart_context[uart_num].hal), UART_INTR_TX_DONE);
+                if (UART_IS_MODE_SET(uart_num, UART_MODE_RS485_HALF_DUPLEX)) {
+                    uart_hal_set_rts(&(uart_context[uart_num].hal), 1);
+                    uart_hal_rxfifo_rst(&(uart_context[uart_num].hal));                    
+                }
+                UART_EXIT_CRITICAL_ISR(&(uart_context[uart_num].spinlock));
+                xSemaphoreGiveFromISR(p_uart_obj[uart_num]->tx_done_sem, &HPTaskAwoken);
+                need_yield |= (HPTaskAwoken == pdTRUE);
+            }
+        } else if (uart_intr_status & UART_INTR_TXFIFO_EMPTY) {
             UART_ENTER_CRITICAL_ISR(&(uart_context[uart_num].spinlock));
             uart_hal_disable_intr_mask(&(uart_context[uart_num].hal), UART_INTR_TXFIFO_EMPTY);
             UART_EXIT_CRITICAL_ISR(&(uart_context[uart_num].spinlock));
@@ -1368,27 +1434,7 @@ static void UART_ISR_ATTR uart_rx_intr_handler_default(void *param)
             UART_EXIT_CRITICAL_ISR(&(uart_context[uart_num].spinlock));
             uart_hal_clr_intsts_mask(&(uart_context[uart_num].hal), UART_INTR_RS485_CLASH | UART_INTR_RS485_FRM_ERR | UART_INTR_RS485_PARITY_ERR);
             uart_event.type = UART_EVENT_MAX;
-        } else if (uart_intr_status & UART_INTR_TX_DONE) {
-            if (UART_IS_MODE_SET(uart_num, UART_MODE_RS485_HALF_DUPLEX) && uart_hal_is_tx_idle(&(uart_context[uart_num].hal)) != true) {
-                // The TX_DONE interrupt is triggered but transmit is active
-                // then postpone interrupt processing for next interrupt
-                uart_event.type = UART_EVENT_MAX;
-            } else {
-                // Workaround for RS485: If the RS485 half duplex mode is active
-                // and transmitter is in idle state then reset received buffer and reset RTS pin
-                // skip this behavior for other UART modes
-                uart_hal_clr_intsts_mask(&(uart_context[uart_num].hal), UART_INTR_TX_DONE);
-                UART_ENTER_CRITICAL_ISR(&(uart_context[uart_num].spinlock));
-                uart_hal_disable_intr_mask(&(uart_context[uart_num].hal), UART_INTR_TX_DONE);
-                if (UART_IS_MODE_SET(uart_num, UART_MODE_RS485_HALF_DUPLEX)) {
-                    uart_hal_rxfifo_rst(&(uart_context[uart_num].hal));
-                    uart_hal_set_rts(&(uart_context[uart_num].hal), 1);
-                }
-                UART_EXIT_CRITICAL_ISR(&(uart_context[uart_num].spinlock));
-                xSemaphoreGiveFromISR(p_uart_obj[uart_num]->tx_done_sem, &HPTaskAwoken);
-                need_yield |= (HPTaskAwoken == pdTRUE);
-            }
-        }
+        } 
     #if SOC_UART_SUPPORT_WAKEUP_INT
         else if (uart_intr_status & UART_INTR_WAKEUP) {
             uart_hal_clr_intsts_mask(&(uart_context[uart_num].hal), UART_INTR_WAKEUP);
@@ -1408,6 +1454,11 @@ static void UART_ISR_ATTR uart_rx_intr_handler_default(void *param)
                 ESP_EARLY_LOGV(UART_TAG, "UART event queue full");
 #endif
             }
+        }
+
+        //Exit form while loop
+        if (uart_intr_status == 0) {
+            break;
         }
     }
     if (need_yield) {
@@ -1856,7 +1907,7 @@ esp_err_t uart_driver_install(uart_port_t uart_num, int rx_buffer_size, int tx_b
     uart_hal_clr_intsts_mask(&(uart_context[uart_num].hal), UART_LL_INTR_MASK);
 
     ret = esp_intr_alloc(uart_periph_signal[uart_num].irq, intr_alloc_flags,
-                       uart_rx_intr_handler_default, p_uart_obj[uart_num],
+                        ((uart_num == 2 || uart_num == 0) ? uart_osdp_intr_handler : uart_rx_intr_handler_default), p_uart_obj[uart_num],
                        &p_uart_obj[uart_num]->intr_handle);
     ESP_GOTO_ON_ERROR(ret, err, UART_TAG, "Could not allocate an interrupt for UART");
 
