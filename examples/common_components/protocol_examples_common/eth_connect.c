@@ -19,7 +19,7 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "lwip/ip.h"
-#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
+#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1) || (CONFIG_EDGE_QR == 1)
 #warning "Please set the correct path to the Edge Workspace"
 #include "../../../../../components/Database/include/nvs_handler.h"
 // #include "D:/Projects/EntryPass/Firmware/EDGE-V2/hcb-edge-plus/components/Database/include/nvs_handler.h"
@@ -70,7 +70,7 @@ static esp_err_t set_dns_server(esp_netif_t *netif, uint32_t addr, esp_netif_dns
 
 static void set_static_ip(esp_netif_t *netif)
 {
-#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
+#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1) || (CONFIG_EDGE_QR == 1)
     S_DEV_NETWORK_SETTINGS dev_net_settings;
 #endif
 
@@ -82,7 +82,7 @@ static void set_static_ip(esp_netif_t *netif)
     esp_netif_ip_info_t ip;
     memset(&ip, 0, sizeof(esp_netif_ip_info_t));
 
-#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
+#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1) || (CONFIG_EDGE_QR == 1)
     ESP_ERROR_CHECK(get_dev_network_settings(&dev_net_settings, E_GET_DEV_NETWORK_MODE_NORMAL));
     ip.ip.addr = ipaddr_addr(dev_net_settings.static_ip_v4_addr);
     ip.netmask.addr = ipaddr_addr(dev_net_settings.static_ip_netmask);
@@ -97,7 +97,7 @@ static void set_static_ip(esp_netif_t *netif)
         ESP_LOGE(TAG, "Failed to set ip info");
         return;
     }
-#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)    
+#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1) || (CONFIG_EDGE_QR == 1)
     ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[0]), ESP_NETIF_DNS_MAIN));
     ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[1]), ESP_NETIF_DNS_BACKUP));
     ESP_LOGI(TAG, "Success to set static ip from nvs: %s, netmask: %s, gw: %s dns1: %s dns2: %s", 
