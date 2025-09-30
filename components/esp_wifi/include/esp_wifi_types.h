@@ -59,7 +59,7 @@ typedef struct {
   * @brief Wi-Fi authmode type
   * Strength of authmodes
   * Personal Networks   : OPEN < WEP < WPA_PSK < OWE < WPA2_PSK = WPA_WPA2_PSK < WAPI_PSK < WPA3_PSK = WPA2_WPA3_PSK
-  * Enterprise Networks : WIFI_AUTH_WPA2_ENTERPRISE < WIFI_AUTH_WPA3_ENT_192
+  * Enterprise Networks : WIFI_AUTH_WPA_ENTERPRISE < WIFI_AUTH_WPA2_ENTERPRISE < WIFI_AUTH_WPA3_ENT_192
   */
 typedef enum {
     WIFI_AUTH_OPEN = 0,         /**< authenticate mode : open */
@@ -67,8 +67,8 @@ typedef enum {
     WIFI_AUTH_WPA_PSK,          /**< authenticate mode : WPA_PSK */
     WIFI_AUTH_WPA2_PSK,         /**< authenticate mode : WPA2_PSK */
     WIFI_AUTH_WPA_WPA2_PSK,     /**< authenticate mode : WPA_WPA2_PSK */
-    WIFI_AUTH_ENTERPRISE,       /**< authenticate mode : WiFi EAP security */
-    WIFI_AUTH_WPA2_ENTERPRISE = WIFI_AUTH_ENTERPRISE,  /**< authenticate mode : WiFi EAP security */
+    WIFI_AUTH_ENTERPRISE,       /**< authenticate mode : WiFi EAP security, treated the same as WIFI_AUTH_WPA2_ENTERPRISE */
+    WIFI_AUTH_WPA2_ENTERPRISE = WIFI_AUTH_ENTERPRISE,  /**< authenticate mode : WPA2-Enterprise security */
     WIFI_AUTH_WPA3_PSK,         /**< authenticate mode : WPA3_PSK */
     WIFI_AUTH_WPA2_WPA3_PSK,    /**< authenticate mode : WPA2_WPA3_PSK */
     WIFI_AUTH_WAPI_PSK,         /**< authenticate mode : WAPI_PSK */
@@ -76,6 +76,10 @@ typedef enum {
     WIFI_AUTH_WPA3_ENT_192,     /**< authenticate mode : WPA3_ENT_SUITE_B_192_BIT */
     WIFI_AUTH_WPA3_EXT_PSK,     /**< this authentication mode will yield same result as WIFI_AUTH_WPA3_PSK and not recommended to be used. It will be deprecated in future, please use WIFI_AUTH_WPA3_PSK instead. */
     WIFI_AUTH_WPA3_EXT_PSK_MIXED_MODE, /**< this authentication mode will yield same result as WIFI_AUTH_WPA3_PSK and not recommended to be used. It will be deprecated in future, please use WIFI_AUTH_WPA3_PSK instead.*/
+    WIFI_AUTH_DUMMY1,
+    WIFI_AUTH_DUMMY2,
+    WIFI_AUTH_DUMMY3,
+    WIFI_AUTH_WPA_ENTERPRISE,   /**< Authenticate mode : WPA-Enterprise security */
     WIFI_AUTH_MAX
 } wifi_auth_mode_t;
 
@@ -301,13 +305,13 @@ typedef struct {
     uint8_t password[64];                     /**< Password of soft-AP. */
     uint8_t ssid_len;                         /**< Optional length of SSID field. */
     uint8_t channel;                          /**< Channel of soft-AP */
-    wifi_auth_mode_t authmode;                /**< Auth mode of soft-AP. Do not support AUTH_WEP, AUTH_WAPI_PSK and AUTH_OWE in soft-AP mode. When the auth mode is set to WPA2_PSK, WPA2_WPA3_PSK or WPA3_PSK, the pairwise cipher will be overwritten with WIFI_CIPHER_TYPE_CCMP.  */
+    wifi_auth_mode_t authmode;                /**< Auth mode of soft-AP. Do not support AUTH_WEP, AUTH_WAPI_PSK and AUTH_OWE in soft-AP mode. When the auth mode is set to WPA2_PSK, WPA2_WPA3_PSK or WPA3_PSK, the pairwise cipher will be overwritten with WIFI_CIPHER_TYPE_CCMP by default, unless explicitly set.  */
     uint8_t ssid_hidden;                      /**< Broadcast SSID or not, default 0, broadcast the SSID */
     uint8_t max_connection;                   /**< Max number of stations allowed to connect in */
     uint16_t beacon_interval;                 /**< Beacon interval which should be multiples of 100. Unit: TU(time unit, 1 TU = 1024 us). Range: 100 ~ 60000. Default value: 100 */
     uint8_t csa_count;                        /**< Channel Switch Announcement Count. Notify the station that the channel will switch after the csa_count beacon intervals. Default value: 3 */
     uint8_t dtim_period;                      /**< Dtim period of soft-AP. Range: 1 ~ 10. Default value: 1 */
-    wifi_cipher_type_t pairwise_cipher;       /**< Pairwise cipher of SoftAP, group cipher will be derived using this. Cipher values are valid starting from WIFI_CIPHER_TYPE_TKIP, enum values before that will be considered as invalid and default cipher suites(TKIP+CCMP) will be used. Valid cipher suites in softAP mode are WIFI_CIPHER_TYPE_TKIP, WIFI_CIPHER_TYPE_CCMP and WIFI_CIPHER_TYPE_TKIP_CCMP. */
+    wifi_cipher_type_t pairwise_cipher;       /**< Pairwise cipher of SoftAP, group cipher will be derived using this. Cipher values are valid starting from WIFI_CIPHER_TYPE_TKIP, enum values before that will be considered as invalid and default cipher suites(TKIP+CCMP) will be used. Valid cipher suites in softAP mode are WIFI_CIPHER_TYPE_TKIP, WIFI_CIPHER_TYPE_CCMP, WIFI_CIPHER_TYPE_TKIP_CCMP, WIFI_CIPHER_TYPE_GCMP and WIFI_CIPHER_TYPE_GCMP256. */
     bool ftm_responder;                       /**< Enable FTM Responder mode */
     wifi_pmf_config_t pmf_cfg;                /**< Configuration for Protected Management Frame */
     wifi_sae_pwe_method_t sae_pwe_h2e;        /**< Configuration for SAE PWE derivation method */

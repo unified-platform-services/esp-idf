@@ -144,8 +144,6 @@ const sys_startup_fn_t g_startup_fn[1] = { start_cpu0 };
 #ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
 // workaround for C++ exception crashes
 void _Unwind_SetNoFunctionContextInstall(unsigned char enable) __attribute__((weak, alias("_Unwind_SetNoFunctionContextInstall_Default")));
-// workaround for C++ exception large memory allocation
-void _Unwind_SetEnableExceptionFdeSorting(unsigned char enable);
 
 static IRAM_ATTR void _Unwind_SetNoFunctionContextInstall_Default(unsigned char enable __attribute__((unused)))
 {
@@ -412,6 +410,10 @@ static void do_core_init(void)
     esp_efuse_set_rom_log_scheme(ROM_LOG_MODE);
 #endif
 
+#if CONFIG_ESP_ECDSA_ENABLE_P192_CURVE
+    ESP_RETURN_ON_ERROR(esp_efuse_enable_ecdsa_p192_curve_mode(), TAG, "Failed to enable ECDSA 192-curve operations");
+#endif
+
 #if CONFIG_ESP_XT_WDT
     esp_xt_wdt_config_t cfg = {
         .timeout                = CONFIG_ESP_XT_WDT_TIMEOUT,
@@ -538,7 +540,6 @@ ESP_SYSTEM_INIT_FN(init_components0, BIT(0), 200)
 #ifdef CONFIG_COMPILER_CXX_EXCEPTIONS
     ESP_EARLY_LOGD(TAG, "Setting C++ exception workarounds.");
     _Unwind_SetNoFunctionContextInstall(1);
-    _Unwind_SetEnableExceptionFdeSorting(0);
 #endif // CONFIG_COMPILER_CXX_EXCEPTIONS
 
     return ESP_OK;
