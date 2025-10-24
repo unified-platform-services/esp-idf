@@ -9,7 +9,7 @@
 #include "lwip/dhcp.h"
 #include "lwip/prot/iana.h"
 #include "lwip/prot/tcp.h"
-#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
+#if (CONFIG_EDGE_PLUS_M1 == 1 || CONFIG_EDGE_PLUS_M2 == 1 || CONFIG_EDGE_PLUS_M3 == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
 #include "lwip/prot/ethernet.h"
 #include "lwip/tcp.h"
 #endif
@@ -23,7 +23,7 @@
 static const char *TAG = "lwip_hooks";
 #endif
 
-#if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
+#if (CONFIG_EDGE_PLUS_M1 == 1 || CONFIG_EDGE_PLUS_M2 == 1 || CONFIG_EDGE_PLUS_M3 == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
 #define DEF_DISCOVEY_FROM_CUSTOM_ETERTYPE 0
 #define DEF_DISCOVEY_FROM_TCP2020 1
 extern esp_err_t process_device_discovery_handler(char *req, uint8_t mode);
