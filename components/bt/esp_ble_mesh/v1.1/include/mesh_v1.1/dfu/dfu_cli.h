@@ -243,6 +243,8 @@ struct bt_mesh_dfu_cli_xfer_blob_params {
     uint8_t block_size_log;
     /** Base chunk size. May be smaller for the last chunk. */
     uint16_t chunk_size;
+    /* Enhanced parameters for message context in blob chunks  */
+    bt_mesh_msg_enh_params_t chunk_enh_params;
 };
 
 /** Firmware Update Client transfer parameters: */
@@ -258,6 +260,9 @@ struct bt_mesh_dfu_cli_xfer {
      */
     const struct bt_mesh_dfu_cli_xfer_blob_params *blob_params;
 };
+
+void dfu_targets_free(void);
+struct bt_mesh_blob_cli_inputs *dfu_targets_alloc(struct bt_mesh_blob_cli_inputs *src);
 
 /** @brief Start distributing a DFU.
  *

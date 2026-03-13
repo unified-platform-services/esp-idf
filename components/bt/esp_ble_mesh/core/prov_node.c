@@ -2,7 +2,7 @@
 
 /*
  * SPDX-FileCopyrightText: 2017 Intel Corporation
- * SPDX-FileContributor: 2018-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileContributor: 2018-2026 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -598,6 +598,7 @@ int bt_mesh_input_string(const char *str)
         return -EINVAL;
     }
 
+    (void)memset(prov_link.auth, 0, sizeof(prov_link.auth));
     (void)memcpy(prov_link.auth, str, bt_mesh_prov_get()->input_size);
 
     send_input_complete();
@@ -616,7 +617,7 @@ int bt_mesh_input_string(const char *str)
 
 static void send_pub_key(void)
 {
-    const uint8_t *key = NULL;
+    uint8_t pub_key[64] = {0};
     uint8_t dhkey[32] = {0};
     PROV_BUF(buf, 65);
 
@@ -625,8 +626,8 @@ static void send_pub_key(void)
      * buffer as a temporary storage location. The validating
      * of the remote public key is finished when it is received.
      */
-    sys_memcpy_swap(buf.data, &prov_link.conf_inputs[17], 32);
-    sys_memcpy_swap(&buf.data[32], &prov_link.conf_inputs[49], 32);
+    memcpy(buf.data, &prov_link.conf_inputs[17], 32);
+    memcpy(&buf.data[32], &prov_link.conf_inputs[49], 32);
 
     if (bt_mesh_dh_key_gen(buf.data, dhkey)) {
         BT_ERR("Unable to generate DHKey");
@@ -634,26 +635,25 @@ static void send_pub_key(void)
         return;
     }
 
-    sys_memcpy_swap(prov_link.dhkey, dhkey, 32);
+    memcpy(prov_link.dhkey, dhkey, 32);
 
     BT_DBG("DHkey: %s", bt_hex(prov_link.dhkey, 32));
 
     bt_mesh_atomic_set_bit(prov_link.flags, HAVE_DHKEY);
 
-    key = bt_mesh_pub_key_get();
-    if (!key) {
+    if (bt_mesh_pub_key_copy(pub_key)) {
         BT_ERR("No public key available");
         close_link(PROV_ERR_UNEXP_ERR);
         return;
     }
 
-    BT_DBG("Local Public Key: %s", bt_hex(key, 64));
+    BT_DBG("Local Public Key: %s", bt_hex(pub_key, 64));
 
     bt_mesh_prov_buf_init(&buf, PROV_PUB_KEY);
 
-    /* Swap X and Y halves independently to big-endian */
-    sys_memcpy_swap(net_buf_simple_add(&buf, 32), key, 32);
-    sys_memcpy_swap(net_buf_simple_add(&buf, 32), &key[32], 32);
+    /* Public key is already in big-endian format from bt_mesh_pub_key_copy() */
+    memcpy(net_buf_simple_add(&buf, 32), pub_key, 32);
+    memcpy(net_buf_simple_add(&buf, 32), &pub_key[32], 32);
 
     memcpy(&prov_link.conf_inputs[81], &buf.data[1], 64);
 
@@ -673,8 +673,8 @@ static int bt_mesh_calc_dh_key(void)
     /* Copy remote key in little-endian for generating DHKey.
      * X and Y halves are swapped independently.
      */
-    sys_memcpy_swap(&pub_key[0], &prov_link.conf_inputs[17], 32);
-    sys_memcpy_swap(&pub_key[32], &prov_link.conf_inputs[49], 32);
+    memcpy(&pub_key[0], &prov_link.conf_inputs[17], 32);
+    memcpy(&pub_key[32], &prov_link.conf_inputs[49], 32);
 
     if (bt_mesh_dh_key_gen(pub_key, dhkey)) {
         BT_ERR("Unable to generate DHKey");
@@ -682,7 +682,7 @@ static int bt_mesh_calc_dh_key(void)
         return -EIO;
     }
 
-    sys_memcpy_swap(prov_link.dhkey, dhkey, 32);
+    memcpy(prov_link.dhkey, dhkey, 32);
 
     BT_DBG("DHkey: %s", bt_hex(prov_link.dhkey, 32));
 
@@ -704,6 +704,8 @@ int bt_mesh_set_oob_pub_key(const uint8_t pub_key_x[32],
                             const uint8_t pub_key_y[32],
                             const uint8_t pri_key[32])
 {
+    uint8_t privkey[32] = {0};
+
     if (!pub_key_x || !pub_key_y || !pri_key) {
         BT_ERR("%s, Invalid parameter", __func__);
         return -EINVAL;
@@ -715,7 +717,8 @@ int bt_mesh_set_oob_pub_key(const uint8_t pub_key_x[32],
      */
     sys_memcpy_swap(&prov_link.conf_inputs[81], pub_key_x, 32);
     sys_memcpy_swap(&prov_link.conf_inputs[81] + 32, pub_key_y, 32);
-    bt_mesh_set_private_key(pri_key);
+    sys_memcpy_swap(privkey, pri_key, 32);
+    bt_mesh_set_private_key(privkey);
 
     bt_mesh_atomic_set_bit(prov_link.flags, OOB_PUB_KEY);
 
@@ -944,17 +947,17 @@ static void prov_data(const uint8_t *data)
 
     bt_mesh_prov_buf_init(&msg, PROV_COMPLETE);
 
-    if (bt_mesh_prov_send(&prov_link, &msg)) {
-        BT_ERR("Failed to send Provisioning Complete");
-        return;
-    }
-
-    /* Ignore any further PDUs on this link */
-    prov_link.expect = 0U;
-
 #if CONFIG_BLE_MESH_RPR_SRV
     /* For NPPI, no need to perform the following actions */
     if (bt_mesh_atomic_test_bit(prov_link.flags, PB_NPPI)) {
+        if (bt_mesh_prov_send(&prov_link, &msg)) {
+            BT_ERR("NPPI, failed to send Provisioning Complete");
+            return;
+        }
+
+        /* Ignore any further PDUs on this link */
+        prov_link.expect = 0U;
+
         return;
     }
 #endif /* CONFIG_BLE_MESH_RPR_SRV */
@@ -966,11 +969,23 @@ static void prov_data(const uint8_t *data)
         identity_enable = false;
     }
 
-    err = bt_mesh_provision(pdu, net_idx, flags, iv_index, addr, dev_key);
+    err = bt_mesh_pre_provision(pdu, net_idx, flags, iv_index, addr, dev_key);
     if (err) {
         BT_ERR("Failed to provision (err %d)", err);
+        close_link(PROV_ERR_UNEXP_ERR);
         return;
     }
+
+    if (bt_mesh_prov_send(&prov_link, &msg)) {
+        BT_ERR("Failed to send Provisioning Complete");
+        return;
+    }
+
+    /* Ignore any further PDUs on this link */
+    prov_link.expect = 0U;
+
+    /* The device becomes a node and enters the network */
+    bt_mesh_provision();
 
     /* After PB-GATT provisioning we should start advertising
      * using Node Identity.
@@ -1509,6 +1524,9 @@ int bt_mesh_pb_gatt_close(struct bt_mesh_conn *conn, uint8_t reason)
     if (bt_mesh_atomic_test_bit(prov_link.flags, PB_REMOTE)) {
         prov_link.pb_remote_cbd = true;
         prov_link.pb_remote_reset = true;
+        /* @todo: the close reason is disconnect reason, not the
+         * link close reason, should change it to link close reason?
+         */
         prov_link.pb_remote_close(&prov_link, reason);
     }
 #endif
@@ -1555,8 +1573,6 @@ static void protocol_timeout(struct k_work *work)
 
 int bt_mesh_prov_init(void)
 {
-    const uint8_t *key = NULL;
-
     if (bt_mesh_prov_get() == NULL) {
         BT_ERR("No provisioning context provided");
         return -EINVAL;
@@ -1571,8 +1587,7 @@ int bt_mesh_prov_init(void)
 
     __ASSERT(bt_mesh_prov_get()->uuid, "Device UUID not initialized");
 
-    key = bt_mesh_pub_key_get();
-    if (!key) {
+    if (bt_mesh_pub_key_gen()) {
         BT_ERR("Failed to generate public key");
         return -EIO;
     }
@@ -1668,6 +1683,11 @@ int bt_mesh_rpr_srv_nppi_pdu_recv(uint8_t type, const uint8_t *data)
 {
     if (!bt_mesh_atomic_test_bit(prov_link.flags, PB_NPPI)) {
         BT_ERR("Not a NPPI provisioning link");
+        return -EINVAL;
+    }
+
+    if (type >= ARRAY_SIZE(prov_handlers)) {
+        BT_ERR("NPPI, unknown provisioning PDU type 0x%02x", type);
         return -EINVAL;
     }
 

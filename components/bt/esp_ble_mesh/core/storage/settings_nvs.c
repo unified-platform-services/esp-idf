@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2017-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileCopyrightText: 2017-2021 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -186,6 +186,10 @@ int bt_mesh_settings_direct_open(bt_mesh_nvs_handle_t *handle)
         err = bt_mesh_settings_nvs_open(ctx->nvs_name, &ctx->handle);
         if (err) {
             BT_ERR("Open nvs failed, name %s, err %d", ctx->nvs_name, err);
+            /* Close the previously opened nvs nvs partition(s) */
+            for (int j = 0; j < i; j++) {
+                bt_mesh_settings_nvs_close(settings_ctx[j].handle);
+            }
             return -EIO;
         }
 

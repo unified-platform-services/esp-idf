@@ -55,6 +55,29 @@ static bt_mesh_ext_adv_t ext_long_relay_adv_pool[CONFIG_BLE_MESH_LONG_PACKET_REL
 #endif /* CONFIG_BLE_MESH_LONG_PACKET */
 #endif /* CONFIG_BLE_MESH_EXT_ADV */
 
+const uint8_t adv_type[] = {
+    [BLE_MESH_ADV_PROV]   = BLE_MESH_DATA_MESH_PROV,
+    [BLE_MESH_ADV_DATA]   = BLE_MESH_DATA_MESH_MESSAGE,
+#if CONFIG_BLE_MESH_EXT_ADV
+    [BLE_MESH_ADV_EXT_PROV] = BLE_MESH_DATA_MESH_PROV,
+    [BLE_MESH_ADV_EXT_RELAY_DATA] = BLE_MESH_DATA_MESH_MESSAGE,
+    [BLE_MESH_ADV_EXT_DATA] = BLE_MESH_DATA_MESH_MESSAGE,
+#if CONFIG_BLE_MESH_LONG_PACKET
+    [BLE_MESH_ADV_EXT_LONG_PROV] = BLE_MESH_DATA_MESH_PROV,
+    [BLE_MESH_ADV_EXT_LONG_RELAY_DATA] = BLE_MESH_DATA_MESH_MESSAGE,
+    [BLE_MESH_ADV_EXT_LONG_DATA] = BLE_MESH_DATA_MESH_MESSAGE,
+#endif /* CONFIG_BLE_MESH_LONG_PACKET */
+#endif /* CONFIG_BLE_MESH_EXT_ADV */
+#if CONFIG_BLE_MESH_FRIEND
+    [BLE_MESH_ADV_FRIEND]     = BLE_MESH_DATA_MESH_MESSAGE,
+#endif
+#if CONFIG_BLE_MESH_RELAY_ADV_BUF
+    [BLE_MESH_ADV_RELAY_DATA] = BLE_MESH_DATA_MESH_MESSAGE,
+#endif
+    [BLE_MESH_ADV_BEACON]     = BLE_MESH_DATA_MESH_BEACON,
+    [BLE_MESH_ADV_URI]        = BLE_MESH_DATA_URI,
+};
+
 static inline void init_adv_with_defaults(struct bt_mesh_adv *adv,
                                           enum bt_mesh_adv_type type)
 {
@@ -896,16 +919,34 @@ void bt_mesh_adv_task_deinit(void)
 {
     BT_DBG("AdvTaskDeinit");
 
-    vTaskDelete(adv_task.handle);
-    adv_task.handle = NULL;
+    if (adv_task.handle) {
+        vTaskDelete(adv_task.handle);
+        adv_task.handle = NULL;
+    }
 
 #if (CONFIG_BLE_MESH_FREERTOS_STATIC_ALLOC_EXTERNAL && \
     (CONFIG_SPIRAM_CACHE_WORKAROUND || !CONFIG_IDF_TARGET_ESP32) && \
      CONFIG_SPIRAM_ALLOW_STACK_EXTERNAL_MEMORY)
-    heap_caps_free(adv_task.stack);
-    adv_task.stack = NULL;
-    heap_caps_free(adv_task.task);
-    adv_task.task = NULL;
+    /* Under specific configurations, bt_mesh_adv_task_deinit immediately releases
+     * adv_task.stack and adv_task.task (StaticTask_t) using heap_caps_free.
+     * However, vTaskDelete(adv_task.handle) only marks the task for deletion and
+     * adds it to the xTasksWaitingTermination list, which will be processed later
+     * by the Idle task (calling prvDeleteTCB). Even though static tasks are not
+     * automatically released by FreeRTOS, the Idle task will still access the TCB
+     * (checking fields such as ucStaticallyAllocated, resetting states). Premature
+     * release leads to a use-after-free (UAF) by the Idle task.
+     * Additionally, if the task is still running (possible in multi-core scenarios),
+     * releasing the stack may cause the task to execute with an invalid stack.
+     */
+    vTaskDelay(pdMS_TO_TICKS(100));
+    if (adv_task.stack) {
+        heap_caps_free(adv_task.stack);
+        adv_task.stack = NULL;
+    }
+    if (adv_task.task) {
+        heap_caps_free(adv_task.task);
+        adv_task.task = NULL;
+    }
 #endif
 }
 

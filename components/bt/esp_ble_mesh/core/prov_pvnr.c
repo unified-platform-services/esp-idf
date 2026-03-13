@@ -37,7 +37,7 @@ _Static_assert(BLE_MESH_MAX_CONN >= CONFIG_BLE_MESH_PBG_SAME_TIME,
 
 #define UNICAST_ADDR_LIMIT  0x7FFF
 
-#define PROV_SVC_ADV_RX_CHECK(pre, cur)   ((cur) < (pre) ? ((cur) + (UINT32_MAX - (pre)) >= 200) : ((cur) - (pre) >= 200))
+#define PROV_SVC_ADV_RX_CHECK(pre, cur)   ((cur) < (pre) ? ((cur) + (UINT32_MAX - (pre) + 1) >= 200) : ((cur) - (pre) >= 200))
 
 /* Provisioner link structure allocation
  * |--------------------------------------------------------|
@@ -101,6 +101,9 @@ struct bt_mesh_prov_ctx {
     /* Mutex used to protect the PB-GATT procedure */
     bt_mesh_mutex_t pb_gatt_lock;
 #endif /* CONFIG_BLE_MESH_PB_GATT */
+
+    /* Mutex used to protect the provisioning procedure */
+    bt_mesh_mutex_t prov_lock;
 
     /* Fast provisioning related information */
     struct {
@@ -175,6 +178,16 @@ void bt_mesh_prov_pvnr_close_link(struct bt_mesh_prov_link *link, uint8_t reason
 void bt_mesh_prov_pvnr_send_invite(struct bt_mesh_prov_link *link)
 {
     send_invite(link);
+}
+
+static inline void bt_mesh_prov_lock(void)
+{
+    bt_mesh_mutex_lock(&prov_ctx.prov_lock);
+}
+
+static inline void bt_mesh_prov_unlock(void)
+{
+    bt_mesh_mutex_unlock(&prov_ctx.prov_lock);
 }
 
 #if CONFIG_BLE_MESH_PB_ADV
@@ -1266,6 +1279,10 @@ static void prov_capabilities(struct bt_mesh_prov_link *link,
 
     /* Provisioner select output action */
     if (bt_mesh_prov_get()->prov_input_num && output_size) {
+        if (output_action == 0) {
+            BT_ERR("Invalid Output OOB Action 0x%04x/%d", output_action, output_size);
+            goto fail;
+        }
         output_action = __builtin_ctz(output_action);
     } else {
         output_size = 0x0;
@@ -1308,6 +1325,10 @@ static void prov_capabilities(struct bt_mesh_prov_link *link,
 
     /* Provisioner select input action */
     if (bt_mesh_prov_get()->prov_output_num && input_size) {
+        if (input_action == 0) {
+            BT_ERR("Invalid Input OOB Action 0x%04x/%d", input_action, input_size);
+            goto fail;
+        }
         input_action = __builtin_ctz(input_action);
     } else {
         input_size = 0x0;
@@ -1576,6 +1597,8 @@ static void send_confirm(struct bt_mesh_prov_link *link)
     BT_DBG("ConfirmationSalt: %s", bt_hex(link->conf_salt, conf_salt_size));
     BT_DBG("ConfirmationKey: %s", bt_hex(link->conf_key, conf_key_size));
     BT_DBG("LocalRandom: %s", bt_hex(link->rand, rand_size));
+    ARG_UNUSED(conf_salt_size);
+    ARG_UNUSED(conf_key_size);
 
     bt_mesh_prov_buf_init(&buf, PROV_CONFIRM);
 
@@ -1764,8 +1787,8 @@ static void prov_gen_dh_key(struct bt_mesh_prov_link *link)
     /* Copy public key in little-endian for generating DHKey.
      * X and Y halves are swapped independently.
      */
-    sys_memcpy_swap(&pub_key[0], &link->conf_inputs[81], 32);
-    sys_memcpy_swap(&pub_key[32], &link->conf_inputs[113], 32);
+    memcpy(&pub_key[0], &link->conf_inputs[81], 32);
+    memcpy(&pub_key[32], &link->conf_inputs[113], 32);
 
     if (bt_mesh_dh_key_gen(pub_key, dhkey)) {
         BT_ERR("Failed to generate DHKey");
@@ -1773,7 +1796,7 @@ static void prov_gen_dh_key(struct bt_mesh_prov_link *link)
         return;
     }
 
-    sys_memcpy_swap(link->dhkey, dhkey, 32);
+    memcpy(link->dhkey, dhkey, 32);
 
     BT_DBG("DHKey: %s", bt_hex(link->dhkey, 32));
 
@@ -1847,23 +1870,22 @@ static void prov_gen_dh_key(struct bt_mesh_prov_link *link)
 
 static void send_pub_key(struct bt_mesh_prov_link *link)
 {
-    const uint8_t *key = NULL;
+    uint8_t pub_key[64] = {0};
     PROV_BUF(buf, 65);
 
-    key = bt_mesh_pub_key_get();
-    if (!key) {
+    if (bt_mesh_pub_key_copy(pub_key)) {
         BT_ERR("No public key available");
         close_link(link, CLOSE_REASON_FAILED);
         return;
     }
 
-    BT_DBG("Local Public Key: %s", bt_hex(key, 64));
+    BT_DBG("Local Public Key: %s", bt_hex(pub_key, 64));
 
     bt_mesh_prov_buf_init(&buf, PROV_PUB_KEY);
 
-    /* Swap X and Y halves independently to big-endian */
-    sys_memcpy_swap(net_buf_simple_add(&buf, 32), key, 32);
-    sys_memcpy_swap(net_buf_simple_add(&buf, 32), &key[32], 32);
+    /* Public key is already in big-endian format from bt_mesh_pub_key_copy() */
+    memcpy(net_buf_simple_add(&buf, 32), pub_key, 32);
+    memcpy(net_buf_simple_add(&buf, 32), &pub_key[32], 32);
 
     /* Store provisioner public key value in conf_inputs */
     memcpy(&link->conf_inputs[17], &buf.data[1], 64);
@@ -2140,6 +2162,7 @@ static void send_prov_data(struct bt_mesh_prov_link *link)
      * not update the prov_ctx.alloc_addr after the proper provisioning
      * complete pdu is received.
      */
+    bt_mesh_prov_lock();
     if (!BLE_MESH_ADDR_IS_UNICAST(prev_addr)) {
         if (BLE_MESH_ADDR_IS_UNICAST(link->assign_addr)) {
             /* Even if the unicast address of the node is assigned by the
@@ -2164,6 +2187,7 @@ static void send_prov_data(struct bt_mesh_prov_link *link)
             bt_mesh_store_prov_info(prov_ctx.primary_addr, prov_ctx.alloc_addr);
         }
     }
+    bt_mesh_prov_unlock();
 
     if (IS_ENABLED(CONFIG_BLE_MESH_FAST_PROV) && FAST_PROV_ENABLE()) {
         link->kri_flags = get_net_flags(prov_ctx.fast_prov.net_idx);
@@ -2481,10 +2505,6 @@ static void prov_msg_recv(struct bt_mesh_prov_link *link)
         goto fail;
     }
 
-    bt_mesh_gen_prov_ack_send(link, link->rx.id);
-    link->rx.prev_id = link->rx.id;
-    link->rx.id = 0;
-
     /* Provisioner first checks information within the received
      * Provisioning PDU. If the check succeeds then check fcs.
      */
@@ -2496,6 +2516,10 @@ static void prov_msg_recv(struct bt_mesh_prov_link *link)
     if (!bt_mesh_prov_pdu_check(type, link->rx.buf->len, NULL)) {
         goto fail;
     }
+
+    bt_mesh_gen_prov_ack_send(link, link->rx.id);
+    link->rx.prev_id = link->rx.id;
+    link->rx.id = 0;
 
     k_delayed_work_submit(&link->prot_timer, PROTOCOL_TIMEOUT);
 
@@ -2819,7 +2843,6 @@ static void protocol_timeout(struct k_work *work)
 
 int bt_mesh_provisioner_prov_init(void)
 {
-    const uint8_t *key = NULL;
     int i;
 
     if (bt_mesh_prov_get() == NULL) {
@@ -2827,8 +2850,7 @@ int bt_mesh_provisioner_prov_init(void)
         return -EINVAL;
     }
 
-    key = bt_mesh_pub_key_get();
-    if (!key) {
+    if (bt_mesh_pub_key_gen()) {
         BT_ERR("Failed to generate Public Key");
         return -EIO;
     }
@@ -2884,6 +2906,7 @@ int bt_mesh_provisioner_prov_init(void)
 #if CONFIG_BLE_MESH_PB_GATT
     bt_mesh_mutex_create(&prov_ctx.pb_gatt_lock);
 #endif
+    bt_mesh_mutex_create(&prov_ctx.prov_lock);
 
     return 0;
 }
@@ -2979,6 +3002,7 @@ int bt_mesh_provisioner_prov_deinit(bool erase)
 #if CONFIG_BLE_MESH_PB_GATT
     bt_mesh_mutex_free(&prov_ctx.pb_gatt_lock);
 #endif
+    bt_mesh_mutex_free(&prov_ctx.prov_lock);
     prov_ctx.static_oob_len = 0U;
     memset(prov_ctx.static_oob_val, 0, sizeof(prov_ctx.static_oob_val));
 
@@ -3136,6 +3160,11 @@ void bt_mesh_provisioner_prov_adv_recv(struct net_buf_simple *buf,
 int bt_mesh_rpr_cli_pdu_recv(struct bt_mesh_prov_link *link, uint8_t type,
                              struct net_buf_simple *buf)
 {
+    if (type >= ARRAY_SIZE(prov_handlers)) {
+        BT_ERR("NPPI, unknown provisioning PDU type 0x%02x", type);
+        return -EINVAL;
+    }
+
     if (type != link->expect) {
         BT_ERR("PB-Remote, unexpected msg 0x%02x != 0x%02x", type, link->expect);
         return -EINVAL;

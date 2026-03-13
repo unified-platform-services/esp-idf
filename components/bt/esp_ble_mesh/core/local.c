@@ -2,7 +2,7 @@
 
 /*
  * SPDX-FileCopyrightText: 2017 Intel Corporation
- * SPDX-FileContributor: 2020-2025 Espressif Systems (Shanghai) CO LTD
+ * SPDX-FileContributor: 2020-2021 Espressif Systems (Shanghai) CO LTD
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -112,8 +112,8 @@ int bt_mesh_model_unsubscribe_group_addr(uint16_t elem_addr, uint16_t cid,
 
     match = bt_mesh_model_find_group(model, group_addr);
     if (match == NULL) {
-        BT_WARN("GroupAddrExist 0x%04x", group_addr);
-        return -EEXIST;
+        BT_WARN("GroupAddrNotExist 0x%04x", group_addr);
+        return -ENOENT;
     }
 
     *match = BLE_MESH_ADDR_UNASSIGNED;
