@@ -69,10 +69,6 @@
 #if CONFIG_BT_BLE_LOG_SPI_OUT_ENABLED
 #include "ble_log/ble_log_spi_out.h"
 #endif // CONFIG_BT_BLE_LOG_SPI_OUT_ENABLED
-
-#if CONFIG_BT_BLE_LOG_UHCI_OUT_ENABLED
-#include "ble_log/ble_log_uhci_out.h"
-#endif // CONFIG_BT_BLE_LOG_UHCI_OUT_ENABLED
 #endif /* CONFIG_BT_LE_CONTROLLER_LOG_MODE_BLE_LOG_V2 */
 
 /* Macro definition
@@ -226,9 +222,9 @@ static int esp_ecc_gen_dh_key(const uint8_t *peer_pub_key_x, const uint8_t *peer
                               const uint8_t *our_priv_key, uint8_t *out_dhkey);
 #if CONFIG_BT_LE_CONTROLLER_LOG_ENABLED
 #if !CONFIG_BT_LE_CONTROLLER_LOG_MODE_BLE_LOG_V2
-#if !CONFIG_BT_LE_CONTROLLER_LOG_SPI_OUT_ENABLED && !CONFIG_BT_LE_CONTROLLER_LOG_UHCI_OUT_ENABLED
+#if !CONFIG_BT_LE_CONTROLLER_LOG_SPI_OUT_ENABLED
 static void esp_bt_controller_log_interface(uint32_t len, const uint8_t *addr, uint32_t len_append, const uint8_t *addr_append, uint32_t flag);
-#endif // !CONFIG_BT_LE_CONTROLLER_LOG_SPI_OUT_ENABLED && !CONFIG_BT_LE_CONTROLLER_LOG_UHCI_OUT_ENABLED
+#endif // !CONFIG_BT_LE_CONTROLLER_LOG_SPI_OUT_ENABLED
 #if CONFIG_BT_LE_CONTROLLER_LOG_STORAGE_ENABLE
 static void esp_bt_ctrl_log_partition_get_and_erase_first_block(void);
 #endif // CONFIG_BT_LE_CONTROLLER_LOG_STORAGE_ENABLE
@@ -238,10 +234,10 @@ static void esp_bt_ctrl_log_partition_get_and_erase_first_block(void);
 static bool esp_bt_check_wakeup_by_bt(void);
 #endif // CONFIG_FREERTOS_USE_TICKLESS_IDLE
 
-#if (CONFIG_BT_CONTROLLER_ONLY) && (CONFIG_BT_LE_SM_SC) && (!CONFIG_BT_LE_CRYPTO_STACK_MBEDTLS)
+#if (CONFIG_BT_CONTROLLER_ONLY) && (CONFIG_BT_LE_SM_SC) && (!CONFIG_BT_SMP_CRYPTO_STACK_MBEDTLS)
 #include "tinycrypt/ecc.h"
 static int ecc_rand_func(uint8_t *dst, unsigned int len);
-#endif // (CONFIG_BT_CONTROLLER_ONLY) && (CONFIG_BT_LE_SM_SC) && (!CONFIG_BT_LE_CRYPTO_STACK_MBEDTLS)
+#endif // (CONFIG_BT_CONTROLLER_ONLY) && (CONFIG_BT_LE_SM_SC) && (!CONFIG_BT_SMP_CRYPTO_STACK_MBEDTLS)
 /* Local variable definition
  ***************************************************************************
  */
@@ -302,18 +298,8 @@ esp_err_t esp_bt_controller_log_init(void)
     }
 #endif // CONFIG_BT_BLE_LOG_SPI_OUT_ENABLED
 
-#if CONFIG_BT_BLE_LOG_UHCI_OUT_ENABLED
-    if (ble_log_uhci_out_init() != 0) {
-        goto uhci_out_init_failed;
-    }
-#endif // CONFIG_BT_BLE_LOG_UHCI_OUT_ENABLED
-
 #if CONFIG_BT_LE_CONTROLLER_LOG_SPI_OUT_ENABLED
     if (r_ble_log_init_simple(ble_log_spi_out_ll_write, ble_log_spi_out_ll_log_ev_proc) != 0) {
-        goto log_init_failed;
-    }
-#elif CONFIG_BT_LE_CONTROLLER_LOG_UHCI_OUT_ENABLED
-    if (r_ble_log_init_simple(ble_log_uhci_out_ll_write, ble_log_uhci_out_ll_log_ev_proc) != 0) {
         goto log_init_failed;
     }
 #else
@@ -346,8 +332,6 @@ esp_err_t esp_bt_controller_log_init(void)
 ctrl_level_init_failed:
 #if CONFIG_BT_LE_CONTROLLER_LOG_SPI_OUT_ENABLED
     r_ble_log_deinit_simple();
-#elif CONFIG_BT_LE_CONTROLLER_LOG_UHCI_OUT_ENABLED
-    r_ble_log_deinit_simple();
 #else
     r_ble_log_deinit_async();
 #endif
@@ -356,10 +340,6 @@ log_init_failed:
     ble_log_spi_out_deinit();
 spi_out_init_failed:
 #endif // CONFIG_BT_BLE_LOG_SPI_OUT_ENABLED
-#if CONFIG_BT_BLE_LOG_UHCI_OUT_ENABLED
-    ble_log_uhci_out_deinit();
-uhci_out_init_failed:
-#endif // CONFIG_BT_BLE_LOG_UHCI_OUT_ENABLED
     return ESP_FAIL;
 }
 
@@ -369,13 +349,7 @@ void esp_bt_controller_log_deinit(void)
     ble_log_spi_out_deinit();
 #endif // CONFIG_BT_BLE_LOG_SPI_OUT_ENABLED
 
-#if CONFIG_BT_BLE_LOG_UHCI_OUT_ENABLED
-    ble_log_uhci_out_deinit();
-#endif // CONFIG_BT_BLE_LOG_UHCI_OUT_ENABLED
-
 #if CONFIG_BT_LE_CONTROLLER_LOG_SPI_OUT_ENABLED
-    r_ble_log_deinit_simple();
-#elif CONFIG_BT_LE_CONTROLLER_LOG_UHCI_OUT_ENABLED
     r_ble_log_deinit_simple();
 #else
     r_ble_log_deinit_async();
@@ -1209,9 +1183,9 @@ esp_err_t esp_bt_controller_init(esp_bt_controller_config_t *cfg)
         ESP_LOGW(NIMBLE_PORT_LOG_TAG, "Controller lib version mismatch!");
     }
 
-#if (CONFIG_BT_CONTROLLER_ONLY) && (CONFIG_BT_LE_SM_SC) && (!CONFIG_BT_LE_CRYPTO_STACK_MBEDTLS)
+#if (CONFIG_BT_CONTROLLER_ONLY) && (CONFIG_BT_LE_SM_SC) && (!CONFIG_BT_SMP_CRYPTO_STACK_MBEDTLS)
     uECC_set_rng(ecc_rand_func);
-#endif // (CONFIG_BT_CONTROLLER_ONLY) && (CONFIG_BT_LE_SM_SC) && (!CONFIG_BT_LE_CRYPTO_STACK_MBEDTLS)
+#endif // (CONFIG_BT_CONTROLLER_ONLY) && (CONFIG_BT_LE_SM_SC) && (!CONFIG_BT_SMP_CRYPTO_STACK_MBEDTLS)
     return ESP_OK;
 free_controller:
     hci_transport_deinit();
@@ -1611,7 +1585,7 @@ void esp_ble_controller_log_dump_all(bool output)
     ble_log_dump_to_console();
 }
 #else /* !CONFIG_BT_LE_CONTROLLER_LOG_MODE_BLE_LOG_V2 */
-#if !CONFIG_BT_LE_CONTROLLER_LOG_SPI_OUT_ENABLED && !CONFIG_BT_LE_CONTROLLER_LOG_UHCI_OUT_ENABLED
+#if !CONFIG_BT_LE_CONTROLLER_LOG_SPI_OUT_ENABLED
 static void esp_bt_controller_log_interface(uint32_t len, const uint8_t *addr, uint32_t len_append, const uint8_t *addr_append, uint32_t flag)
 {
     bool end = (flag & BIT(BLE_LOG_INTERFACE_FLAG_END));
@@ -1633,7 +1607,7 @@ static void esp_bt_controller_log_interface(uint32_t len, const uint8_t *addr, u
     portEXIT_CRITICAL_SAFE(&spinlock);
 #endif // CONFIG_BT_LE_CONTROLLER_LOG_STORAGE_ENABLE
 }
-#endif // !CONFIG_BT_LE_CONTROLLER_LOG_SPI_OUT_ENABLED && !CONFIG_BT_LE_CONTROLLER_LOG_UHCI_OUT_ENABLED
+#endif // !CONFIG_BT_LE_CONTROLLER_LOG_SPI_OUT_ENABLED
 
 void esp_ble_controller_log_dump_all(bool output)
 {
@@ -1641,13 +1615,9 @@ void esp_ble_controller_log_dump_all(bool output)
     ble_log_spi_out_dump_all();
 #endif // CONFIG_BT_BLE_LOG_SPI_OUT_ENABLED
 
-#if CONFIG_BT_BLE_LOG_UHCI_OUT_ENABLED
-    ble_log_uhci_out_dump_all();
-#endif // CONFIG_BT_BLE_LOG_UHCI_OUT_ENABLED
-
 #if CONFIG_BT_LE_CONTROLLER_LOG_STORAGE_ENABLE
     esp_bt_read_ctrl_log_from_flash(output);
-#elif !CONFIG_BT_LE_CONTROLLER_LOG_SPI_OUT_ENABLED && !CONFIG_BT_LE_CONTROLLER_LOG_UHCI_OUT_ENABLED
+#elif !CONFIG_BT_LE_CONTROLLER_LOG_SPI_OUT_ENABLED
     portMUX_TYPE spinlock = portMUX_INITIALIZER_UNLOCKED;
     portENTER_CRITICAL_SAFE(&spinlock);
     esp_panic_handler_feed_wdts();
@@ -1663,7 +1633,7 @@ void esp_ble_controller_log_dump_all(bool output)
 #if (!CONFIG_BT_NIMBLE_ENABLED) && (CONFIG_BT_CONTROLLER_ENABLED)
 #if CONFIG_BT_LE_SM_LEGACY || CONFIG_BT_LE_SM_SC
 #define BLE_SM_KEY_ERR 0x17
-#if CONFIG_BT_LE_CRYPTO_STACK_MBEDTLS
+#if CONFIG_BT_SMP_CRYPTO_STACK_MBEDTLS
 #include "mbedtls/aes.h"
 #if CONFIG_BT_LE_SM_SC
 #include "mbedtls/cipher.h"
@@ -1706,7 +1676,7 @@ static int ecc_rand_func(uint8_t *dst, unsigned int len)
 }
 #endif // CONFIG_BT_CONTROLLER_ONLY
 #endif // CONFIG_BT_LE_SM_SC
-#endif // CONFIG_BT_LE_CRYPTO_STACK_MBEDTLS
+#endif // CONFIG_BT_SMP_CRYPTO_STACK_MBEDTLS
 
 /* Based on Core Specification 4.2 Vol 3. Part H 2.3.5.6.1 */
 static const uint8_t ble_sm_alg_dbg_priv_key[32] = {
@@ -1727,7 +1697,7 @@ int ble_sm_alg_gen_dhkey(const uint8_t *peer_pub_key_x, const uint8_t *peer_pub_
     swap_buf(&pk[32], peer_pub_key_y, 32);
     swap_buf(priv, our_priv_key, 32);
 
-#if CONFIG_BT_LE_CRYPTO_STACK_MBEDTLS
+#if CONFIG_BT_SMP_CRYPTO_STACK_MBEDTLS
     struct mbedtls_ecp_point pt = {0}, Q = {0};
     mbedtls_mpi z = {0}, d = {0};
     mbedtls_ctr_drbg_context ctr_drbg = {0};
@@ -1804,13 +1774,13 @@ exit:
     if (rc == TC_CRYPTO_FAIL) {
         return BLE_SM_KEY_ERR;
     }
-#endif // CONFIG_BT_LE_CRYPTO_STACK_MBEDTLS
+#endif // CONFIG_BT_SMP_CRYPTO_STACK_MBEDTLS
 
     swap_buf(out_dhkey, dh, 32);
     return 0;
 }
 
-#if CONFIG_BT_LE_CRYPTO_STACK_MBEDTLS
+#if CONFIG_BT_SMP_CRYPTO_STACK_MBEDTLS
 static int mbedtls_gen_keypair(uint8_t *public_key, uint8_t *private_key)
 {
     int rc = BLE_SM_KEY_ERR;
@@ -1855,7 +1825,7 @@ exit:
 
     return 0;
 }
-#endif  // CONFIG_BT_LE_CRYPTO_STACK_MBEDTLS
+#endif  // CONFIG_BT_SMP_CRYPTO_STACK_MBEDTLS
 
 /**
  * pub: 64 bytes
@@ -1871,7 +1841,7 @@ int ble_sm_alg_gen_key_pair(uint8_t *pub, uint8_t *priv)
     uint8_t pk[64];
 
     do {
-#if CONFIG_BT_LE_CRYPTO_STACK_MBEDTLS
+#if CONFIG_BT_SMP_CRYPTO_STACK_MBEDTLS
         if (mbedtls_gen_keypair(pk, priv) != 0) {
             return BLE_SM_KEY_ERR;
         }
@@ -1879,7 +1849,7 @@ int ble_sm_alg_gen_key_pair(uint8_t *pub, uint8_t *priv)
         if (uECC_make_key(pk, priv, uECC_secp256r1()) != TC_CRYPTO_SUCCESS) {
             return BLE_SM_KEY_ERR;
         }
-#endif  // CONFIG_BT_LE_CRYPTO_STACK_MBEDTLS
+#endif  // CONFIG_BT_SMP_CRYPTO_STACK_MBEDTLS
         /* Make sure generated key isn't debug key. */
     } while (memcmp(priv, ble_sm_alg_dbg_priv_key, 32) == 0);
 
