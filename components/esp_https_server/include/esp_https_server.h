@@ -107,6 +107,10 @@ struct httpd_ssl_config {
     esp_tls_handshake_callback cert_select_cb; /*!< Certificate selection callback to use */
 
     const char** alpn_protos; /*!< Application protocols the server supports in order of prefernece. Used for negotiating during the TLS handshake, first one the client supports is selected. The data structure must live as long as the https server itself! */
+
+    /** TLS protocol version for this server, e.g., TLS 1.2, TLS 1.3
+     *  (default - no preference). Enables per-server TLS version control. */
+    esp_tls_proto_ver_t tls_version;
 };
 
 typedef struct httpd_ssl_config httpd_ssl_config_t;
@@ -167,6 +171,7 @@ typedef struct httpd_ssl_config httpd_ssl_config_t;
     .ssl_userdata = NULL,                         \
     .cert_select_cb = NULL,                       \
     .alpn_protos = NULL,                          \
+    .tls_version = ESP_TLS_VER_ANY,               \
 }
 
 /**

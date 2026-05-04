@@ -315,6 +315,8 @@ typedef struct esp_tls_cfg_server {
                                                      TLS extensions, such as ALPN and server_certificate_type . */
 #endif
 
+    esp_tls_proto_ver_t tls_version;            /*!< TLS protocol version for this server, e.g., TLS 1.2, TLS 1.3
+                                                     (default - no preference). Enables TLS version control per server instance. */
 } esp_tls_cfg_server_t;
 
 /**

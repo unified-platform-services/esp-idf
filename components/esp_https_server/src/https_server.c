@@ -218,7 +218,7 @@ static httpd_ssl_ctx_t *create_secure_context(const struct httpd_ssl_config *con
 #if defined(CONFIG_ESP_TLS_SERVER_CERT_SELECT_HOOK)
     cfg->cert_select_cb = config->cert_select_cb;
 #endif
-
+    cfg->tls_version = config->tls_version;
     ssl_ctx->tls_cfg = cfg;
     ssl_ctx->user_cb = config->user_cb;
 
