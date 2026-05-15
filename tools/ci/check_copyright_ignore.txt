@@ -386,7 +386,6 @@ components/esp_hid/private/bt_hidh.h
 components/esp_hid/private/esp_hidd_private.h
 components/esp_local_ctrl/src/esp_local_ctrl_handler.c
 components/esp_local_ctrl/src/esp_local_ctrl_priv.h
-components/esp_local_ctrl/src/esp_local_ctrl_transport_ble.c
 components/esp_phy/test/test_phy_rtc.c
 components/esp_pm/include/esp_private/pm_trace.h
 components/esp_rom/esp32/ld/esp32.rom.api.ld
@@ -777,8 +776,6 @@ components/wifi_provisioning/python/wifi_config_pb2.py
 components/wifi_provisioning/python/wifi_constants_pb2.py
 components/wifi_provisioning/python/wifi_scan_pb2.py
 components/wifi_provisioning/src/scheme_console.c
-components/wifi_provisioning/src/wifi_config.c
-components/wifi_provisioning/src/wifi_scan.c
 components/wpa_supplicant/esp_supplicant/src/esp_wpa_err.h
 components/wpa_supplicant/include/utils/wpa_debug.h
 components/wpa_supplicant/include/utils/wpabuf.h
