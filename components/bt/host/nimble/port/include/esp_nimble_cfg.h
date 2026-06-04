@@ -15,8 +15,12 @@
  * attempt to use these macros without including this header will result in a
  * compiler error.
  */
+#ifndef MYNEWT_VAL
 #define MYNEWT_VAL(_name)                       MYNEWT_VAL_ ## _name
+#endif
+#ifndef MYNEWT_VAL_CHOICE
 #define MYNEWT_VAL_CHOICE(_name, _val)          MYNEWT_VAL_ ## _name ## __ ## _val
+#endif
 
 #ifndef IRAM_ATTR_64MCPU
 #define IRAM_ATTR_64MCPU IRAM_ATTR
@@ -2277,4 +2281,13 @@
 #define MYNEWT_VAL_BLE_SCAN_ALLOW_ENH_ADI_FILTER (0)
 #endif
 #endif
+
+#ifndef MYNEWT_VAL_BT_NIMBLE_INSIGHTS_ENABLE
+#ifdef CONFIG_BT_NIMBLE_INSIGHTS_ENABLE
+#define MYNEWT_VAL_BT_NIMBLE_INSIGHTS_ENABLE CONFIG_BT_NIMBLE_INSIGHTS_ENABLE
+#else
+#define MYNEWT_VAL_BT_NIMBLE_INSIGHTS_ENABLE (0)
+#endif
+#endif
+
 #endif
