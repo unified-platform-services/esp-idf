@@ -599,6 +599,20 @@ void btm_ble_transmit_power_report_evt(tBTM_BLE_TRANS_POWER_REPORT_EVT *params);
 #if (BLE_FEAT_CONN_SUBRATING == TRUE)
 void btm_ble_subrate_change_evt(tBTM_BLE_SUBRATE_CHANGE_EVT *params);
 #endif // #if (BLE_FEAT_CONN_SUBRATING == TRUE)
+#if (BLE_FEAT_FRAME_SPACE_UPDATE == TRUE)
+void btm_ble_frame_space_update_complete_evt(UINT8 *p);
+#endif // #if (BLE_FEAT_FRAME_SPACE_UPDATE == TRUE)
+#if (BLE_FEAT_LL_EXT_FEAT == TRUE)
+void btm_ble_read_all_local_supp_features_complete(UINT8 *p);
+void btm_ble_read_all_remote_features_complete_evt(UINT8 *p);
+#endif // #if (BLE_FEAT_LL_EXT_FEAT == TRUE)
+#if (BLE_FEAT_SHORTER_CONN_INTERVALS == TRUE)
+void btm_ble_conn_rate_change_evt(tBTM_BLE_CONN_RATE_CHANGE *params);
+void btm_ble_read_min_supp_conn_interval_complete(UINT8 *p);
+#endif // #if (BLE_FEAT_SHORTER_CONN_INTERVALS == TRUE)
+#if (BLE_FEAT_LE_UTP == TRUE)
+void btm_ble_utp_receive_evt(UINT8 *p, UINT16 len);
+#endif // #if (BLE_FEAT_LE_UTP == TRUE)
 #if (BT_BLE_FEAT_PAWR_EN == TRUE)
 void btm_ble_pa_subevt_data_req_evt(tBTM_BLE_PA_SUBEVT_DATA_REQ_EVT *params);
 void btm_ble_pa_rsp_rpt_evt(tBTM_BLE_PA_RSP_REPORT_EVT *params);
@@ -613,6 +627,14 @@ void btm_ble_cs_proc_enable_cmpl_evt(tBTM_BLE_CS_PROC_ENABLE_CMPL_EVT *proc_en);
 void btm_ble_cs_subevt_result_evt(tBTM_BLE_CS_SUBEVT_RESULT_CMPL_EVT *subevt_result);
 void btm_ble_cs_subevt_continue_result_evt(tBTM_BLE_CS_SUBEVT_RESULT_CONTINUE_EVT *subevt_continue_result);
 #endif // (BT_BLE_FEAT_CHANNEL_SOUNDING == TRUE)
+
+static inline tBTM_STATUS btm_ble_status_from_hci(UINT8 hci_status)
+{
+    return (hci_status == HCI_SUCCESS) ? BTM_SUCCESS : (tBTM_STATUS)(BTM_HCI_ERROR | hci_status);
+}
+
+#define BTM_BLE_TRACE_HCI_CMD_FAIL(func, hci_status) \
+    BTM_TRACE_ERROR("%s, fail to send the hci command, the error code = 0x%x", (func), (hci_status))
 
 
 /*
