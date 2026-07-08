@@ -22,7 +22,7 @@
 // #if (CONFIG_EDGE_PLUS == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1)
 #warning "Please set the correct path to the Edge Workspace"
 // #include "../../../../../components/Database/include/nvs_handler.h"
-#include "../../../../main/dev_setting.h"
+#include "../../../../../main/dev_setting.h"
 // #include "D:/Projects/EntryPass/Firmware/EDGE-V2/hcb-edge-plus/components/Database/include/nvs_handler.h"
 //  #endif
 
