@@ -305,7 +305,7 @@ void example_ethernet_shutdown(void)
     eth_stop();
 }
 
-esp_err_t example_ethernet_connect(void)
+esp_err_t example_ethernet_connect(void *arg)
 {
 #if CONFIG_EXAMPLE_CONNECT_IPV4
     s_semph_get_ip_addrs = xSemaphoreCreateBinary();

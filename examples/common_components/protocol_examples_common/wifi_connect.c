@@ -19,7 +19,7 @@
 
 #if CONFIG_EXAMPLE_CONNECT_WIFI
 
-static const char *TAG = "example_connect";
+static const char *TAG = "wifi_example_connect";
 static esp_netif_t *s_example_sta_netif = NULL;
 static SemaphoreHandle_t s_semph_get_ip_addrs = NULL;
 #if CONFIG_EXAMPLE_CONNECT_IPV6
@@ -31,21 +31,21 @@ static int s_retry_num = 0;
 static void example_handler_on_wifi_disconnect(void *arg, esp_event_base_t event_base,
                                int32_t event_id, void *event_data)
 {
-    s_retry_num++;
-    if (s_retry_num > CONFIG_EXAMPLE_WIFI_CONN_MAX_RETRY) {
-        ESP_LOGI(TAG, "WiFi Connect failed %d times, stop reconnect.", s_retry_num);
-        /* let example_wifi_sta_do_connect() return */
-        if (s_semph_get_ip_addrs) {
-            xSemaphoreGive(s_semph_get_ip_addrs);
-        }
-#if CONFIG_EXAMPLE_CONNECT_IPV6
-        if (s_semph_get_ip6_addrs) {
-            xSemaphoreGive(s_semph_get_ip6_addrs);
-        }
-#endif
-        example_wifi_sta_do_disconnect();
-        return;
-    }
+//     s_retry_num++;
+//     if (s_retry_num > CONFIG_EXAMPLE_WIFI_CONN_MAX_RETRY) {
+//         ESP_LOGI(TAG, "WiFi Connect failed %d times, stop reconnect.", s_retry_num);
+//         /* let example_wifi_sta_do_connect() return */
+//         if (s_semph_get_ip_addrs) {
+//             xSemaphoreGive(s_semph_get_ip_addrs);
+//         }
+// #if CONFIG_EXAMPLE_CONNECT_IPV6
+//         if (s_semph_get_ip6_addrs) {
+//             xSemaphoreGive(s_semph_get_ip6_addrs);
+//         }
+// #endif
+//         example_wifi_sta_do_disconnect();
+//         return;
+//     }
     ESP_LOGI(TAG, "Wi-Fi disconnected, trying to reconnect...");
     esp_err_t err = esp_wifi_connect();
     if (err == ESP_ERR_WIFI_NOT_STARTED) {
@@ -172,6 +172,7 @@ esp_err_t example_wifi_sta_do_connect(wifi_config_t wifi_config, bool wait)
         xSemaphoreTake(s_semph_get_ip6_addrs, portMAX_DELAY);
 #endif
         if (s_retry_num > CONFIG_EXAMPLE_WIFI_CONN_MAX_RETRY) {
+            s_retry_num = 0;
             return ESP_FAIL;
         }
     }
@@ -203,9 +204,12 @@ void example_wifi_shutdown(void)
     example_wifi_stop();
 }
 
-esp_err_t example_wifi_connect(void)
+esp_err_t example_wifi_connect(const char *ssid, const char *password)
 {
-    ESP_LOGI(TAG, "Start example_connect.");
+    if (ssid == NULL || password == NULL)
+        return ESP_ERR_INVALID_ARG;
+
+    ESP_LOGI(TAG, "Start wifi example_connect.");
     example_wifi_start();
     wifi_config_t wifi_config = {
         .sta = {
@@ -239,6 +243,8 @@ esp_err_t example_wifi_connect(void)
         wifi_config.sta.threshold.authmode = WIFI_AUTH_OPEN;
     }
 #endif
+    strncpy((char *)wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
+    strncpy((char *)wifi_config.sta.password, password, sizeof(wifi_config.sta.password));
     return example_wifi_sta_do_connect(wifi_config, true);
 }
 

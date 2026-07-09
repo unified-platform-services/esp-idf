@@ -19,6 +19,8 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
+#include "../../../../../main/dev_setting.h"
+
 static const char *TAG = "example_common";
 
 #if CONFIG_EXAMPLE_CONNECT_IPV6
@@ -29,8 +31,7 @@ const char *example_ipv6_addr_types_to_str[6] = {
     "ESP_IP6_ADDR_IS_LINK_LOCAL",
     "ESP_IP6_ADDR_IS_SITE_LOCAL",
     "ESP_IP6_ADDR_IS_UNIQUE_LOCAL",
-    "ESP_IP6_ADDR_IS_IPV4_MAPPED_IPV6"
-};
+    "ESP_IP6_ADDR_IS_IPV4_MAPPED_IPV6"};
 #endif
 
 /**
@@ -50,16 +51,18 @@ static bool netif_desc_matches_with(esp_netif_t *netif, void *ctx)
 
 esp_netif_t *get_example_netif_from_desc(const char *desc)
 {
-    return esp_netif_find_if(netif_desc_matches_with, (void*)desc);
+    return esp_netif_find_if(netif_desc_matches_with, (void *)desc);
 }
 
-static esp_err_t print_all_ips_tcpip(void* ctx)
+static esp_err_t print_all_ips_tcpip(void *ctx)
 {
     const char *prefix = ctx;
     // iterate over active interfaces, and print out IPs of "our" netifs
     esp_netif_t *netif = NULL;
-    while ((netif = esp_netif_next_unsafe(netif)) != NULL) {
-        if (example_is_our_netif(prefix, netif)) {
+    while ((netif = esp_netif_next_unsafe(netif)) != NULL)
+    {
+        if (example_is_our_netif(prefix, netif))
+        {
             ESP_LOGI(TAG, "Connected to %s", esp_netif_get_desc(netif));
 #if CONFIG_EXAMPLE_CONNECT_IPV4
             esp_netif_ip_info_t ip;
@@ -70,7 +73,8 @@ static esp_err_t print_all_ips_tcpip(void* ctx)
 #if CONFIG_EXAMPLE_CONNECT_IPV6
             esp_ip6_addr_t ip6[MAX_IP6_ADDRS_PER_NETIF];
             int ip6_addrs = esp_netif_get_all_ip6(netif, ip6);
-            for (int j = 0; j < ip6_addrs; ++j) {
+            for (int j = 0; j < ip6_addrs; ++j)
+            {
                 esp_ip6_addr_type_t ipv6_type = esp_netif_ip6_get_addr_type(&(ip6[j]));
                 ESP_LOGI(TAG, "- IPv6 address: " IPV6STR ", type: %s", IPV62STR(ip6[j]), example_ipv6_addr_types_to_str[ipv6_type]);
             }
@@ -83,26 +87,53 @@ static esp_err_t print_all_ips_tcpip(void* ctx)
 void example_print_all_netif_ips(const char *prefix)
 {
     // Print all IPs in TCPIP context to avoid potential races of removing/adding netifs when iterating over the list
-    esp_netif_tcpip_exec(print_all_ips_tcpip, (void*) prefix);
+    esp_netif_tcpip_exec(print_all_ips_tcpip, (void *)prefix);
 }
 
-
-esp_err_t example_connect(void)
+void app_ethernet_connect(void *param)
 {
-#if CONFIG_EXAMPLE_CONNECT_ETHERNET
-    if (example_ethernet_connect() != ESP_OK) {
-        return ESP_FAIL;
+    if (example_ethernet_connect(param) == ESP_OK)
+    {
+        esp_register_shutdown_handler(&example_ethernet_shutdown);
     }
-    ESP_ERROR_CHECK(esp_register_shutdown_handler(&example_ethernet_shutdown));
+
+    ESP_LOGI(TAG, "ethernet_connect task delete");
+
+    vTaskDelete(NULL);
+}
+
+void app_wifi_connect(void *arg)
+{   
+    if (example_wifi_connect(((S_DEV_NETWORK_SETTINGS *)arg)->wifi_ssid, ((S_DEV_NETWORK_SETTINGS *)arg)->wifi_password) == ESP_OK)
+    {
+        esp_register_shutdown_handler(&example_wifi_shutdown);  
+    }
+
+    ESP_LOGI(TAG, "esp_wifi_connect task delete");
+        
+    vTaskDelete(NULL);
+}
+
+esp_err_t example_connect(void *arg)
+{
+#if CONFIG_EXAMPLE_CONNECT_ETHERNET    
+    xTaskCreate(app_ethernet_connect, "ethernet_connect", 4096, arg, 5, NULL);
+    // if (example_ethernet_connect() != ESP_OK) {
+    //     return ESP_FAIL;
+    // }
+    // ESP_ERROR_CHECK(esp_register_shutdown_handler(&example_ethernet_shutdown));
 #endif
 #if CONFIG_EXAMPLE_CONNECT_WIFI
-    if (example_wifi_connect() != ESP_OK) {
-        return ESP_FAIL;
-    }
-    ESP_ERROR_CHECK(esp_register_shutdown_handler(&example_wifi_shutdown));
+    xTaskCreate(app_wifi_connect, "wifi_connect", 4096, arg, 5, NULL);
+    // if (example_wifi_connect() != ESP_OK)
+    // {
+    //     return ESP_FAIL;
+    // }
+    // ESP_ERROR_CHECK(esp_register_shutdown_handler(&example_wifi_shutdown));
 #endif
 #if CONFIG_EXAMPLE_CONNECT_THREAD
-    if (example_thread_connect() != ESP_OK) {
+    if (example_thread_connect() != ESP_OK)
+    {
         return ESP_FAIL;
     }
     ESP_ERROR_CHECK(esp_register_shutdown_handler(&example_thread_shutdown));
@@ -122,7 +153,6 @@ esp_err_t example_connect(void)
 
     return ESP_OK;
 }
-
 
 esp_err_t example_disconnect(void)
 {
