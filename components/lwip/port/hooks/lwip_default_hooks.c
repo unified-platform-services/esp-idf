@@ -325,6 +325,7 @@ void dhcp_parse_extra_opts(struct dhcp *dhcp, uint8_t state, uint8_t option, uin
     LWIP_UNUSED_ARG(offset);
 #if LWIP_DHCP_ENABLE_MTU_UPDATE
     if ((option == DHCP_OPTION_MTU) &&
+<<<<<<< HEAD
         (state == DHCP_STATE_REBOOTING || state == DHCP_STATE_REBINDING ||
          state == DHCP_STATE_RENEWING || state == DHCP_STATE_REQUESTING))
     {
@@ -346,6 +347,25 @@ void dhcp_parse_extra_opts(struct dhcp *dhcp, uint8_t state, uint8_t option, uin
                 }
                 return;
             }
+=======
+     (state == DHCP_STATE_REBOOTING || state == DHCP_STATE_REBINDING ||
+      state == DHCP_STATE_RENEWING  || state == DHCP_STATE_REQUESTING)) {
+    u32_t mtu = 0;
+    struct netif *netif;
+    LWIP_ERROR("dhcp_parse_extra_opts(): MTU option's len != 2", len == 2, return;);
+    LWIP_ERROR("dhcp_parse_extra_opts(): extracting MTU option failed",
+               pbuf_copy_partial(p, &mtu, 2, offset) == 2, return;);
+    mtu = lwip_htons((u16_t)mtu);
+    NETIF_FOREACH(netif) {
+      /* find the netif related to this dhcp */
+      if (dhcp == netif_dhcp_data(netif)) {
+        if (mtu < 68) { /* RFC 2132 requires MTU >= 68 */
+          return;
+        }
+        if (mtu < netif->mtu) {
+          netif->mtu = mtu;
+          LWIP_DEBUGF(DHCP_DEBUG | LWIP_DBG_TRACE, ("dhcp_parse_extra_opts(): Negotiated netif MTU is %d\n", netif->mtu));
+>>>>>>> upstream/release/v5.2
         }
     } /* DHCP_OPTION_MTU */
 #endif /* LWIP_DHCP_ENABLE_MTU_UPDATE */
