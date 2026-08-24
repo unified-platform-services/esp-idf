@@ -19,7 +19,10 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "lwip/ip.h"
-#if (CONFIG_EDGE_PLUS_M1 == 1 || CONFIG_EDGE_PLUS_M2 == 1 || CONFIG_EDGE_PLUS_M3 == 1) || (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || (CONFIG_EDGE_FB == 1) || (CONFIG_EDGE_QR == 1) || (CONFIG_EDGE_O4 == 1) || (CONFIG_EDGE_O12 == 1)
+#if (CONFIG_EDGE_PLUS_M1 == 1 || CONFIG_EDGE_PLUS_M2_LIFT_MITSUBISHI == 1 || \
+    CONFIG_EDGE_PLUS_M2 == 1 || CONFIG_EDGE_PLUS_M3 == 1) || \
+    (CONFIG_EDGE_LPR == 1) || (CONFIG_EDGE_V2 == 1) || (CONFIG_EDGE_HCB2 == 1) || \
+    (CONFIG_EDGE_FB == 1) || (CONFIG_EDGE_QR == 1) || (CONFIG_EDGE_O4 == 1) || (CONFIG_EDGE_O12 == 1)
 #warning "Please set the correct path to the Edge Workspace"
 #include "../../../../../components/Database/include/nvs_handler.h"
 // #include "D:/Projects/EntryPass/Firmware/EDGE-V2/hcb-edge-plus/components/Database/include/nvs_handler.h"
