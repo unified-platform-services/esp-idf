@@ -20,7 +20,7 @@
 #include "freertos/event_groups.h"
 #include "lwip/ip.h"
 #if (CONFIG_EDGEPLUS_DEVICES == 1)
-#warning "Please set the correct path to the Edge Workspace"
+#include "../../../../../components/Handler/include/ep_p2p.h"
 #include "../../../../../components/Database/include/nvs_handler.h"
 #endif
 #define EXAMPLE_MAXIMUM_RETRY 3
@@ -42,6 +42,12 @@ static void eth_stop(void);
 
 /** Event handler for Ethernet events */
 
+static void eth_on_lost_ip(void *arg, esp_event_base_t event_base,
+                           int32_t event_id, void *event_data)
+{
+    cleanup_ep_p2p_multicast_socket();
+}
+
 static void eth_on_got_ip(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data)
 {
@@ -52,6 +58,14 @@ static void eth_on_got_ip(void *arg, esp_event_base_t event_base,
     }
     ESP_LOGI(TAG, "Got IPv4 event: Interface \"%s\" address: " IPSTR, esp_netif_get_desc(event->esp_netif), IP2STR(&event->ip_info.ip));
     xSemaphoreGive(s_semph_get_ip_addrs);
+
+    // Clean up stale socket if present before creating a new one
+    cleanup_ep_p2p_multicast_socket();
+
+    if (setup_ep_p2p_multicast_socket(event->ip_info.ip.addr) == ESP_OK)
+    {
+        ESP_LOGI(TAG, "Multicast engine ready");
+    }
 }
 
 static esp_err_t set_dns_server(esp_netif_t *netif, uint32_t addr, esp_netif_dns_type_t type)
@@ -98,14 +112,21 @@ static void set_static_ip(esp_netif_t *netif)
 #if (CONFIG_EDGEPLUS_DEVICES == 1)
     ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[0]), ESP_NETIF_DNS_MAIN));
     ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(dev_net_settings.dns_ip[1]), ESP_NETIF_DNS_BACKUP));
-    ESP_LOGI(TAG, "Success to set static ip from nvs: %s, netmask: %s, gw: %s dns1: %s dns2: %s", 
-        dev_net_settings.static_ip_v4_addr, dev_net_settings.static_ip_netmask, dev_net_settings.static_gw_ip,
-        dev_net_settings.dns_ip[0], dev_net_settings.dns_ip[1]);
+    ESP_LOGI(TAG, "Success to set static ip from nvs: %s, netmask: %s, gw: %s dns1: %s dns2: %s",
+             dev_net_settings.static_ip_v4_addr, dev_net_settings.static_ip_netmask, dev_net_settings.static_gw_ip,
+             dev_net_settings.dns_ip[0], dev_net_settings.dns_ip[1]);
 #else
     ESP_LOGI(TAG, "Success to set static ip: %s, netmask: %s, gw: %s", EXAMPLE_STATIC_IP_ADDR, EXAMPLE_STATIC_NETMASK_ADDR, EXAMPLE_STATIC_GW_ADDR);
     ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(EXAMPLE_MAIN_DNS_SERVER), ESP_NETIF_DNS_MAIN));
     ESP_ERROR_CHECK(set_dns_server(netif, ipaddr_addr(EXAMPLE_BACKUP_DNS_SERVER), ESP_NETIF_DNS_BACKUP));
 #endif
+}
+
+static void on_eth_disconnect_event(void *esp_netif, esp_event_base_t event_base,
+                                    int32_t event_id, void *event_data)
+{
+    ESP_LOGW(TAG, "Ethernet Link Down - Cleaning up sockets");
+    cleanup_ep_p2p_multicast_socket();
 }
 
 static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
@@ -261,10 +282,12 @@ static esp_netif_t *eth_start(void)
     esp_netif_attach(netif, s_eth_glue);
 
     // Register user defined event handers
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &eth_on_got_ip, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_GOT_IP, &eth_on_got_ip, netif));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_ETH_LOST_IP, &eth_on_lost_ip, netif));
     ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &on_eth_event, netif));
+    ESP_ERROR_CHECK(esp_event_handler_register(ETH_EVENT, ETHERNET_EVENT_DISCONNECTED, &on_eth_disconnect_event, netif));
 #ifdef CONFIG_EXAMPLE_CONNECT_IPV6
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &eth_on_got_ipv6, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_GOT_IP6, &eth_on_got_ipv6, netif));
 #endif
 
     esp_eth_start(s_eth_handle);
@@ -275,10 +298,12 @@ static void eth_stop(void)
 {
     esp_netif_t *eth_netif = get_example_netif_from_desc(EXAMPLE_NETIF_DESC_ETH);
     ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_GOT_IP, &eth_on_got_ip));
+    ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_ETH_LOST_IP, &eth_on_lost_ip));
 #if CONFIG_EXAMPLE_CONNECT_IPV6
     ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_GOT_IP6, &eth_on_got_ipv6));
     ESP_ERROR_CHECK(esp_event_handler_unregister(ETH_EVENT, ETHERNET_EVENT_CONNECTED, &on_eth_event));
 #endif
+    ESP_ERROR_CHECK(esp_event_handler_unregister(ETH_EVENT, ETHERNET_EVENT_DISCONNECTED, &on_eth_disconnect_event));
     ESP_ERROR_CHECK(esp_eth_stop(s_eth_handle));
     ESP_ERROR_CHECK(esp_eth_del_netif_glue(s_eth_glue));
     ESP_ERROR_CHECK(esp_eth_driver_uninstall(s_eth_handle));
