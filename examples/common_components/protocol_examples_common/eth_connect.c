@@ -20,7 +20,7 @@
 #include "freertos/event_groups.h"
 #include "lwip/ip.h"
 #if (CONFIG_EDGEPLUS_DEVICES == 1)
-#include "../../../../../components/Handler/include/ep_p2p.h"
+// #include "../../../../../components/Handler/include/ep_p2p.h"
 #include "../../../../../components/Database/include/nvs_handler.h"
 #endif
 #define EXAMPLE_MAXIMUM_RETRY 3
@@ -45,7 +45,7 @@ static void eth_stop(void);
 static void eth_on_lost_ip(void *arg, esp_event_base_t event_base,
                            int32_t event_id, void *event_data)
 {
-    cleanup_ep_p2p_multicast_socket();
+    // cleanup_ep_p2p_multicast_socket();
 }
 
 static void eth_on_got_ip(void *arg, esp_event_base_t event_base,
@@ -60,12 +60,12 @@ static void eth_on_got_ip(void *arg, esp_event_base_t event_base,
     xSemaphoreGive(s_semph_get_ip_addrs);
 
     // Clean up stale socket if present before creating a new one
-    cleanup_ep_p2p_multicast_socket();
+    // cleanup_ep_p2p_multicast_socket();
 
-    if (setup_ep_p2p_multicast_socket(event->ip_info.ip.addr) == ESP_OK)
-    {
-        ESP_LOGI(TAG, "Multicast engine ready");
-    }
+    // if (setup_ep_p2p_multicast_socket(event->ip_info.ip.addr) == ESP_OK)
+    // {
+    //     ESP_LOGI(TAG, "Multicast engine ready");
+    // }
 }
 
 static esp_err_t set_dns_server(esp_netif_t *netif, uint32_t addr, esp_netif_dns_type_t type)
@@ -126,7 +126,7 @@ static void on_eth_disconnect_event(void *esp_netif, esp_event_base_t event_base
                                     int32_t event_id, void *event_data)
 {
     ESP_LOGW(TAG, "Ethernet Link Down - Cleaning up sockets");
-    cleanup_ep_p2p_multicast_socket();
+    // cleanup_ep_p2p_multicast_socket();
 }
 
 static void on_eth_event(void *esp_netif, esp_event_base_t event_base,
