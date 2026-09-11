@@ -40,6 +40,14 @@ esp_err_t esp_ieee802154_enable(void);
 esp_err_t esp_ieee802154_disable(void);
 
 /**
+ * @brief  Get the receive sensitivity.
+ *
+ * @return The receive sensitivity in dBm.
+ *
+ */
+int8_t esp_ieee802154_get_receive_sensitivity(void);
+
+/**
  * @brief  Get the operational channel.
  *
  * @return The channel number (11~26).
@@ -607,6 +615,8 @@ extern void esp_ieee802154_receive_at_done(void);
  * @brief  Set the IEEE 802.15.4 Radio to receive state at a specific time, for a specific duration.
  *
  * @note   Radio will start receiving after the timestamp, and continue receiving for the specific duration.
+ * @note   If a duration is specified and the target end time (time + duration) is earlier than the current
+ *         time, the receive window has already expired and no operation will be performed.
  *
  * @param[in]  time      A specific timestamp for starting receiving.
  * @param[in]  duration  A specific duration after which to stop receiving. Set duration = 0 to rx indefinitely.

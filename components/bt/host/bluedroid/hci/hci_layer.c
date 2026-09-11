@@ -114,8 +114,13 @@ int hci_start_up(void)
     }
 
     const size_t workqueue_len[] = {HCI_HOST_TASK_WORKQUEUE0_LEN, HCI_HOST_TASK_WORKQUEUE1_LEN};
+#if (!CONFIG_BT_BLUEDROID_HCI_TASK_STACK_IN_EXT_MEM)
     hci_host_thread = osi_thread_create(HCI_HOST_TASK_NAME, HCI_HOST_TASK_STACK_SIZE, HCI_HOST_TASK_PRIO, HCI_HOST_TASK_PINNED_TO_CORE,
-                                        HCI_HOST_TASK_WORKQUEUE_NUM, workqueue_len);
+                                        HCI_HOST_TASK_WORKQUEUE_NUM, workqueue_len, false);
+#else
+    hci_host_thread = osi_thread_create(HCI_HOST_TASK_NAME, HCI_HOST_TASK_STACK_SIZE, HCI_HOST_TASK_PRIO, HCI_HOST_TASK_PINNED_TO_CORE,
+                                        HCI_HOST_TASK_WORKQUEUE_NUM, workqueue_len, true);
+#endif
     if (hci_host_thread == NULL) {
         goto error;
     }
@@ -150,11 +155,21 @@ void hci_shut_down(void)
 
 bool hci_downstream_data_post(uint32_t timeout)
 {
+    bool ret;
+
     if (hci_host_env.downstream_data_ready == NULL) {
         HCI_TRACE_WARNING("%s downstream_data_ready event not created", __func__);
         return false;
     }
-    return osi_thread_post_event(hci_host_env.downstream_data_ready, timeout);
+
+    ret = osi_thread_post_event(hci_host_env.downstream_data_ready, timeout);
+    if (!ret) {
+        HCI_TRACE_DEBUG("%s post fail credits=%d cmdq=%u pktq=%u",
+                        __func__, hci_host_env.command_credits,
+                        (unsigned)fixed_pkt_queue_length(hci_host_env.command_queue),
+                        (unsigned)fixed_queue_length(hci_host_env.packet_queue));
+    }
+    return ret;
 }
 
 static int hci_layer_init_env(void)
@@ -244,6 +259,8 @@ static void hci_downstream_data_handler(void *arg)
      * All packets will be directly copied to single queue in driver layer with
      * H4 type header added (1 byte).
      */
+    UNUSED(arg);
+
     while (hci_host_check_send_available()) {
         /*Now Target only allowed one packet per TX*/
         BT_HDR *pkt = packet_fragmenter->fragment_current_packet();
@@ -259,6 +276,11 @@ static void hci_downstream_data_handler(void *arg)
             break;
         }
     }
+
+    HCI_TRACE_DEBUG("%s done credits=%d cmdq=%u pktq=%u",
+                    __func__, hci_host_env.command_credits,
+                    (unsigned)fixed_pkt_queue_length(hci_host_env.command_queue),
+                    (unsigned)fixed_queue_length(hci_host_env.packet_queue));
 }
 
 static void transmit_command(
@@ -576,8 +598,23 @@ intercepted:
 static void dispatch_reassembled(BT_HDR *packet)
 {
     // Events should already have been dispatched before this point
-    //Tell Up-layer received packet.
-    if (btu_task_post(SIG_BTU_HCI_MSG, packet, OSI_THREAD_MAX_TIMEOUT) == false) {
+    // Tell Up-layer received packet.
+    do {
+        if ((packet->event & BT_EVT_MASK) == BT_EVT_TO_BTU_HCI_ACL) {
+            if (btu_hci_acl_data_post(packet)) {
+                packet = NULL;
+            }
+            // TODO: Use controller to host flow control
+            break;
+        }
+
+        if (btu_task_post(SIG_BTU_HCI_MSG, packet, OSI_THREAD_MAX_TIMEOUT)) {
+            packet = NULL;
+            break;
+        }
+    } while (0);
+
+    if (packet != NULL) {
         osi_free(packet);
     }
 }
