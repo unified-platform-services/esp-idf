@@ -24,7 +24,6 @@
 #include "esp_ieee802154_sec.h"
 #include "esp_ieee802154_util.h"
 #include "esp_ieee802154_timer.h"
-#include "hal/ieee802154_ll.h"
 #include "esp_attr.h"
 #include "esp_phy_init.h"
 
@@ -1075,6 +1074,14 @@ IEEE802154_NOINLINE static void ieee802154_start_receive_at(void* ctx)
 
 esp_err_t ieee802154_receive_at(uint32_t time, uint32_t duration)
 {
+    // If a receive window is specified but it has already elapsed (time + duration is earlier
+    // than the current time), this is an expired rx window, so skip it and return directly.
+    if (duration) {
+        uint32_t current_time = (uint32_t)esp_timer_get_time();
+        if (is_target_time_expired(time + duration, current_time)) {
+            return ESP_OK;
+        }
+    }
     // TODO: Light sleep current optimization, TZ-1613.
     IEEE802154_RF_ENABLE();
     ieee802154_enter_critical();
